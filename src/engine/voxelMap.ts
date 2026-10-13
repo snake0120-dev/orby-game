@@ -1,4 +1,4 @@
-import { isEmissive, isTranslucent, lookupBlock, stripNamespace, type BlockRole } from '../game/blocks';
+import { isEmissive, isTranslucent, lookupBlock, stripNamespace, type BlockRole, isLamp } from '../game/blocks';
 import { VOXEL } from '../theme';
 
 /** 임포터(scripts/import-mcworld.mjs)가 뱉는 JSON 형식 */
@@ -117,6 +117,7 @@ export function compileVoxelMap(raw: RawMap): VoxelMap {
   const colors: (string | null)[] = [];
   const translucent: boolean[] = [];
   const emissive: boolean[] = [];
+  const lamp: boolean[] = [];
   const stairs: (StairShape | null)[] = [];
   const roles: (BlockRole | null)[] = [];
   const unknown: string[] = [];
@@ -128,6 +129,7 @@ export function compileVoxelMap(raw: RawMap): VoxelMap {
       colors[i] = null;   // 모르는 블록은 그리지 않는다 — 경고를 보고 표에 추가하면 된다
       translucent[i] = false;
       emissive[i] = false;
+      lamp[i] = false;
       stairs[i] = null;
       roles[i] = null;
       return;
@@ -135,6 +137,7 @@ export function compileVoxelMap(raw: RawMap): VoxelMap {
     colors[i] = def.color ?? null;
     translucent[i] = def.color ? isTranslucent(name) : false;
     emissive[i] = def.color ? isEmissive(name) : false;
+    lamp[i] = def.color ? isLamp(name) : false;
     stairs[i] = def.color ? readStair(name, raw.states?.[i]) : null;
     roles[i] = def.role ?? null;
   });
@@ -216,14 +219,19 @@ export function compileVoxelMap(raw: RawMap): VoxelMap {
   /* ── 빛 덩어리 찾기 ─────────────────────────────────────
      램프 칸을 모아 일정 크기 격자로 묶고, 묶음마다 평균 위치를 낸다.
      격자를 쓰는 이유는 단순해서다 — 정확한 군집화가 필요할 만큼
-     램프가 흩어져 있는 맵은 아직 없다. */
+     램프가 흩어져 있는 맵은 아직 없다.
+
+     보는 건 `emissive` 가 아니라 **`lamp`** 다 (`blocks.ts` 의 `isLamp`).
+     밝게 보이는 것과 빛을 뿜는 것은 다르다 — 빛나는 블록은 `buildGeometry` 가
+     밝은 메시로 따로 빼기 때문에 전구 없이도 환하다. 둘을 안 나누면
+     길이 60칸짜리 빛 띠 하나가 전구 15개가 된다 (3구역 공항이 그렇다). */
   const CLUSTER = 4;
   const buckets = new Map<string, { x: number; y: number; z: number; n: number }>();
   for (let x = 0; x < w; x++) {
     for (let y = 0; y < h; y++) {
       for (let z = 0; z < d; z++) {
         const v = cells[x * h * d + y * d + z];
-        if (v < 0 || !emissive[v]) continue;
+        if (v < 0 || !lamp[v]) continue;
         const key = `${Math.floor(x / CLUSTER)},${Math.floor(y / CLUSTER)},${Math.floor(z / CLUSTER)}`;
         const b = buckets.get(key) ?? { x: 0, y: 0, z: 0, n: 0 };
         b.x += x; b.y += y; b.z += z; b.n++;

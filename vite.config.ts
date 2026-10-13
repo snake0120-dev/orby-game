@@ -11,22 +11,24 @@ import { defineConfig, type Plugin } from 'vite'
  * 다른 저장소를 쓰기 때문에 그 복사를 건너뛸 방법이 없었다.
  *
  * 그래서 패널의 `파일로 저장` 이 여기로 보내고, 이 플러그인이
- * `zone2-edits.json` 에 적는다. 그 다음은 `scripts/make-zone2.mjs` 에 반영하면
- * 된다 — 전시 빌드에는 아예 안 붙는다(`apply: 'serve'`).
+ * `<구역>-edits.json` 에 적는다. 그 다음은 그 구역 생성기에 반영하면 된다 —
+ * 전시 빌드에는 아예 안 붙는다(`apply: 'serve'`).
  */
-function zone2Edits(): Plugin {
+const EDIT_ZONES = ['zone2', 'zone3']
+
+function zoneEdits(): Plugin {
   return {
-    name: 'orby-zone2-edits',
+    name: 'orby-zone-edits',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use('/__zone2-edits', (req, res) => {
+      for (const zone of EDIT_ZONES) server.middlewares.use(`/__${zone}-edits`, (req, res) => {
         if (req.method !== 'POST') { res.statusCode = 405; res.end('POST 만 받습니다'); return }
         let body = ''
         req.on('data', (c) => { body += c })
         req.on('end', () => {
-          void writeFile(resolve(__dirname, 'zone2-edits.json'), body)
+          void writeFile(resolve(__dirname, `${zone}-edits.json`), body)
             .then(() => {
-              server.config.logger.info('[zone2] 개체 자리를 zone2-edits.json 에 적었습니다')
+              server.config.logger.info(`[${zone}] 개체 자리를 ${zone}-edits.json 에 적었습니다`)
               res.setHeader('content-type', 'application/json')
               res.end('{"ok":true}')
             })
@@ -42,7 +44,7 @@ function zone2Edits(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), zone2Edits()],
+  plugins: [react(), zoneEdits()],
   build: {
     rollupOptions: {
       input: {
@@ -51,6 +53,8 @@ export default defineConfig({
         opening: resolve(__dirname, 'opening.html'),
         // 2구역만 보는 화면 — 미리보기 그림과 나란히 놓고 구도를 맞출 때 쓴다
         zone2: resolve(__dirname, 'zone2.html'),
+        // 3구역(공항 터미널)만 보는 화면
+        zone3: resolve(__dirname, 'zone3.html'),
       },
     },
   },

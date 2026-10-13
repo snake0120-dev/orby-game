@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * 2구역 렌더를 **미리보기 그림과 나란히·겹쳐서** 한 장으로 뽑는다.
+ * 구역 렌더를 **가이드 그림과 나란히·겹쳐서** 한 장으로 뽑는다.
  *
- *   npm run dev                       (5180 포트로 띄워둘 것)
- *   node scripts/compare-zone2.mjs [출력경로]
+ *   npm run dev                              (5180 포트로 띄워둘 것)
+ *   node scripts/compare-zone.mjs zone3 [출력경로]
  *
  * 왜 있는가 — "띄워보고 눈대중으로 고치기"를 반복하다 그림에서 세 번 멀어졌다.
  * 요소를 하나 얹을 때마다 이걸 돌려서 **옆에 놓고** 본다.
@@ -16,11 +16,22 @@ import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const OUT = process.argv[2] ?? 'public/compare-zone2.png';
-const GUIDE = '../2,3,4번 맵 가이드/2번 맵.png';
-const APP = 'http://localhost:5180/zone2.html';
-const PORT = 9336;
-const W = 1400, H = 995;            // 가이드와 같은 가로세로비 (2497×1775)
+/* 구역마다 가이드 그림·주소·화면 비율이 다르다. 비율은 **가이드 그림의
+   가로세로비 그대로** 잡아야 겹쳐 놓고 볼 때 한쪽만 늘어나지 않는다. */
+const ZONES = {
+  zone2: { guide: '../2,3,4번 맵 가이드/2번 맵.png',                 W: 1400, H: 995, port: 9336 },
+  zone3: { guide: '../2,3,4번 맵 가이드/2번 이후 이어지는 부분.png',  W: 1400, H: 783, port: 9337 },
+};
+
+const ZONE = process.argv[2] ?? 'zone2';
+const Z = ZONES[ZONE];
+if (!Z) { console.error(`모르는 구역: ${ZONE}  (${Object.keys(ZONES).join(' / ')})`); process.exit(1); }
+
+const OUT = process.argv[3] ?? `public/compare-${ZONE}.png`;
+const GUIDE = Z.guide;
+const APP = `http://localhost:5180/${ZONE}.html`;
+const PORT = Z.port;
+const { W, H } = Z;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -35,7 +46,7 @@ async function target() {
   for (let i = 0; i < 60; i++) {
     try {
       const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
-      const page = list.find((t) => t.type === 'page' && t.url.includes('zone2'));
+      const page = list.find((t) => t.type === 'page' && t.url.includes(ZONE));
       if (page) return page;
     } catch { /* 아직 안 떴다 */ }
     await sleep(500);
@@ -57,7 +68,7 @@ const send = (method, params = {}) =>
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
 await send('Page.enable');
 await send('Page.navigate', { url: APP });
-/* 6만 블록짜리 맵이라 로딩이 길다. 짧게 잡았더니 **빈 화면**이 찍혀서
+/* 블록이 몇 만 개라 로딩이 길다. 짧게 잡았더니 **빈 화면**이 찍혀서
    두 번 헛돌았다 — 캔버스에 뭔가 그려질 때까지 기다린 뒤 조금 더 둔다. */
 for (let i = 0; i < 40; i++) {
   await sleep(3000);
@@ -81,7 +92,7 @@ ws.close(); chrome.kill();
 if (!shot) { console.error('캡처 실패'); process.exit(1); }
 
 await mkdir('public', { recursive: true });
-const mine = join(tmpdir(), `orby-zone2-${Date.now()}.png`);
+const mine = join(tmpdir(), `orby-${ZONE}-${Date.now()}.png`);
 await writeFile(mine, Buffer.from(shot, 'base64'));
 
 /* 합성은 파이썬(Pillow)에 맡긴다 — Node 쪽에 이미지 라이브러리를 들이지 않는다 */

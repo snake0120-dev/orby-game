@@ -250,3 +250,22 @@ const EMISSIVE = new Set([
   'lit_redstone_lamp',   // 꺼진 redstone_lamp 와 다른 블록이다
 ]);
 export const isEmissive = (rawName: string): boolean => EMISSIVE.has(stripNamespace(rawName));
+
+/**
+ * 진짜 **전구**인가 — 둘레를 비추는 광원을 하나 켤 블록인가.
+ *
+ * `isEmissive` 와 나눠 둔 이유: 밝게 보이는 것과 빛을 뿜는 것은 다르다.
+ * 빛나는 블록은 `buildGeometry` 가 따로 밝은 메시(`glow`)로 빼기 때문에
+ * 전구가 없어도 환하게 보인다. 그런데 `voxelMap` 은 빛나는 칸을 4×4×4 로 묶어
+ * 묶음마다 `pointLight` 를 하나씩 켠다 — **길이 60칸짜리 빛 띠 하나가 전구 15개**다.
+ *
+ * 3구역(공항)은 가장자리마다·기둥마다·처마마다 빛 띠가 있어서, 나누지 않으면
+ * 전구가 300개쯤 켜지고 아이패드에서 안 돈다.
+ *
+ * → **긴 띠는 froglight** (밝게만 보인다), **진짜 등은 glowstone 류** (전구를 켠다).
+ * 2구역은 glowstone 만 써서 전구 9개 그대로다.
+ */
+const LAMP = new Set([
+  'glowstone', 'sea_lantern', 'lantern', 'lit_redstone_lamp',
+]);
+export const isLamp = (rawName: string): boolean => LAMP.has(stripNamespace(rawName));
