@@ -1,0 +1,113 @@
+import { useEffect, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { Backdrop } from '../engine/Backdrop';
+import { Scene } from '../engine/Scene';
+import { ErrorScreen, Loading } from '../ui/Screens';
+import { TunePanel } from '../ui/TunePanel';
+import { useGame } from '../game/store';
+import { useTune } from '../game/tuneStore';
+import { immigration } from '../game/stages/02-immigration';
+import { compose, loadParts, type PartsFile } from './parts';
+import { useEdit } from './editStore';
+import { PartsPanel } from './PartsPanel';
+
+/**
+ * **2구역만 보는 전용 입구** (`zone2.html`).
+ *
+ * 대기화면(`opening.html`)과 같은 이유로 입구를 갈랐다 — 여정 쪽을 손봐도
+ * 이쪽이 안 흔들리고, 반대도 마찬가지다.
+ *
+ * 여정용 화면(타이틀·구역 통과·HUD·길잡이 말풍선)은 **일부러 안 붙인다.**
+ * 이 페이지는 미리보기 그림과 나란히 놓고 구도를 맞추는 용도라, 맵 위에
+ * 아무것도 없어야 한다.
+ *
+ * 맵은 파일에서 통째로 읽지 않고 **개체 단위로 읽어 여기서 합친다**
+ * (`parts.ts`). 그래야 패널에서 부스 하나를 집어 두 칸 옮기는 게 가능하다.
+ *
+ *   1 / 2  개체 패널 열기 / 닫기
+ *   3 / 4  화면 톤 패널 열기 / 닫기
+ */
+export default function Zone2() {
+  const phase = useGame((s) => s.phase);
+  const [file, setFile] = useState<PartsFile | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const edits = useEdit((s) => s.edits);
+
+  useEffect(() => {
+    loadParts().then((f) => {
+      // 생성기에 값이 반영됐으면 브라우저에 남은 편집을 버린다 (두 번 밀리는 사고 방지)
+      useEdit.getState().syncStamp(f.stamp);
+      setFile(f);
+    }, (err: unknown) => setFailed(err instanceof Error ? err.message : String(err)));
+  }, []);
+
+  /* 개체를 옮길 때마다 다시 합쳐서 통째로 갈아끼운다.
+     방향키를 **누르고 있으면** 초당 몇 번씩 다시 합치게 되는데, 56만 칸짜리
+     맵이라 그대로 두면 키가 밀린다. 잠깐 멈출 때까지 기다렸다 한 번만 짓는다. */
+  useEffect(() => {
+    if (!file) return;
+    const t = setTimeout(() => {
+      void useGame.getState().loadStage(immigration, compose(file, edits));
+      /* `loadStage` 가 `useTune` 을 스테이지 기본값으로 되돌린다. 패널에서
+         맞춘 전체 뷰 값은 그 뒤에 다시 꽂아야 안 날아간다. */
+      const v = useEdit.getState().view;
+      if (Object.keys(v).length) useTune.getState().set(v);
+    }, 110);
+    return () => clearTimeout(t);
+  /* `view` 는 **일부러 뺐다.** 1인칭을 켜거나 카메라를 미는 건 맵과 상관없는
+     일인데, 여기 걸어 두면 그때마다 56만 칸을 다시 합치고 `phase: 'loading'`
+     을 거친다 — 그 한 호흡 동안 개체가 날아다니는 것처럼 보였다.
+     전체 뷰 값은 `setView` 가 `useTune` 에 바로 꽂는다. */
+  }, [file, edits]);
+
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const el = ev.target as HTMLInputElement | null;
+      const typing =
+        el?.tagName === 'TEXTAREA' ||
+        (el?.tagName === 'INPUT' &&
+          ['text', 'number', 'search', 'email', 'password', 'url'].includes(el.type));
+      if (typing) return;
+
+      if (ev.key === '1') { useEdit.getState().set({ open: true }); return; }
+      if (ev.key === '2') { useEdit.getState().set({ open: false }); return; }
+      if (ev.key === '3') { useTune.getState().set({ open: true }); return; }
+      if (ev.key === '4') { useTune.getState().set({ open: false }); return; }
+
+      /* 고른 개체를 방향키로 민다. 버튼을 누르는 것보다 이쪽이 훨씬 빨라서,
+         한 칸씩 보며 맞추는 작업이 실제로 손에 붙는다. */
+      const { selected, step, nudge } = useEdit.getState();
+      if (!selected) return;
+      const big = ev.shiftKey;
+      const moves: Record<string, [number, number, number]> = {
+        ArrowLeft: [-step, 0, 0],
+        ArrowRight: [step, 0, 0],
+        ArrowUp: big ? [0, step, 0] : [0, 0, -step],
+        ArrowDown: big ? [0, -step, 0] : [0, 0, step],
+      };
+      const m = moves[ev.key];
+      if (!m) return;
+      ev.preventDefault();
+      nudge(selected, m[0], m[1], m[2]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  return (
+    <div className="stage">
+      {/* 레티나에서 dpr 2 는 픽셀이 네 배다. 1.5 로 묶으면 칠하는 양이 절반 가까이
+          줄고, 복셀 덩어리라 눈으로는 거의 티가 안 난다. */}
+      <Canvas shadows dpr={[1, 1.5]} gl={{ antialias: true }} style={{ position: 'absolute', inset: 0 }}>
+        <Backdrop />
+        <Scene />
+      </Canvas>
+      <div className="fade-bottom" />
+      {failed && <ErrorScreen />}
+      {!failed && phase === 'loading' && <Loading />}
+      {!failed && phase === 'error' && <ErrorScreen />}
+      {file && <PartsPanel file={file} />}
+      {import.meta.env.DEV && <TunePanel />}
+    </div>
+  );
+}
