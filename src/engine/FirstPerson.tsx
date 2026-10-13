@@ -49,6 +49,19 @@ export function FirstPerson() {
       Math.sin(look - c.rotation.y),
       Math.cos(look - c.rotation.y),
     ) * k;
+
+    /* 1인칭이 까맣게 나올 때 **어디를 보고 있는지** 알 수 있어야 한다.
+       화면만 봐서는 카메라가 바닥 밑인지, 반대쪽을 보는지, 아예 안 움직인
+       건지 구별이 안 된다. 개발 중에만 적어 둔다. */
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__fpv = {
+        눈: c.position.toArray().map((v) => +(v / VOXEL).toFixed(1)),
+        발: POSE.at.toArray().map((v) => +(v / VOXEL).toFixed(1)),
+        아이방향: +((POSE.yaw * 180) / Math.PI).toFixed(0),
+        카메라방향: +((c.rotation.y * 180) / Math.PI).toFixed(0),
+        키배수: POSE.scale,
+      };
+    }
   });
 
   return (

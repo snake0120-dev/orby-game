@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGame } from '../game/store';
 import { useTune } from '../game/tuneStore';
-import { POSE } from './characterPose';
 import { INPUT, walkStep } from './walkInput';
 
 /**
@@ -75,10 +74,10 @@ export function WalkKeys() {
     const keys = INPUT.keys;
 
     if (fpv) {
-      /* 시선 이어받기는 **첫 프레임에** 한다. 효과(useEffect)에서 하면 아직
-         `Character` 가 한 번도 안 돌아 `POSE.yaw` 가 0 이고, 1인칭을 켜는 순간
-         아이가 엉뚱한 쪽으로 홱 돈다 — 저장소에 켜진 채로 들어오면 늘 그랬다. */
-      if (!INPUT.synced) { INPUT.heading = POSE.yaw; INPUT.synced = true; }
+      /* 시선 이어받기는 **`Character` 가 한다.** r3f 는 useFrame 을 붙은
+         순서대로 도는데 `Character` 가 여기보다 먼저라, 여기서 이어받으면
+         아이가 이미 옛 시선 쪽으로 한 프레임 돈 뒤다 (3구역에서 1인칭이
+         맵 밖을 보던 원인). 여기서는 돌리기만 한다. */
       if (keys.has('q')) INPUT.heading += TURN * dt;
       if (keys.has('e')) INPUT.heading -= TURN * dt;
     }

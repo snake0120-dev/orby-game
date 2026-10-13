@@ -28,13 +28,13 @@ export const terminal: Stage = {
   lightIntensity: 0.5,
   fadeStrength: 0,
   /* 맵 상자가 바뀔 때마다 `IsoCamera` 공식으로 **풀어서** 넣는다 (눈대중 금지 — 결정 ㉓).
-     104×58×104 · VOXEL 0.1 기준:
+     104×54×104 · VOXEL 0.1 기준:
        ex+ez = 20.6
-       projW = 0.707 × 20.6            = 14.57
-       projH = 0.408 × 20.6 + 0.816 × 5.8 = 13.15   ← 세로가 먼저 찬다
-     1400×783 화면에서 zoom = min(1400/14.57, 783/13.15) = 59.6 ÷ padding
+       projW = 0.707 × 20.6               = 14.57
+       projH = 0.408 × 20.6 + 0.816 × 5.4 = 12.82   ← 세로가 먼저 찬다
+     1400×783 화면에서 zoom = min(1400/14.57, 783/12.82) = 61.1 ÷ padding
      상자는 네모인데 지은 건 ㄱ자라, 1.0 이면 빈 모서리까지 담느라 그림이 작아진다 */
-  cameraPadding: 0.76,
+  cameraPadding: 0.78,
 
   gradient: { low: '#1f4a55', lowMix: 0.18, high: '#ffffff', highMix: 0.05, floor: 4, span: 34 },
 

@@ -55,9 +55,15 @@ export function Character() {
   const companion = useRef<THREE.Group>(null);
   const spawnedFor = useRef<string | null>(null);
 
-  useFrame((state, dt) => {
+  useFrame((state, dtRaw) => {
     const g = group.current;
     if (!g) return;
+
+    /* **한 프레임이 길어도 순간이동하지 않게 묶는다.**
+       맵을 다시 굽거나 탭을 바꿨다 돌아오면 `dt` 가 1~2초로 들어온다. 그러면
+       `min(1, 12*dt)` 가 1 이 돼서 보간이 아니라 **텔레포트**가 된다. 1/30 초로
+       묶으면 멈칫한 만큼 느리게 따라붙을 뿐 자리는 안 튄다. */
+    const dt = Math.min(dtRaw, 1 / 30);
 
     const { playerCell, path, arrive, map, stage } = useGame.getState();
     if (!map) return;
@@ -86,9 +92,9 @@ export function Character() {
     g.position.y += (_target.y - g.position.y) * Math.min(1, 12 * dt);
 
     if (flatDist > ARRIVE_EPS) {
-      const step = Math.min(SPEED * VOXEL * dt, flatDist);
-      g.position.x += (_dir.x / flatDist) * step;
-      g.position.z += (_dir.z / flatDist) * step;
+      const stepLen = Math.min(SPEED * VOXEL * dt, flatDist);
+      g.position.x += (_dir.x / flatDist) * stepLen;
+      g.position.z += (_dir.z / flatDist) * stepLen;
 
       /* 진행 방향을 바라본다. **1인칭일 때는 안 돌린다** — 거기서는 Q·E 로
          정한 시선이 곧 카메라라, 옆걸음(A·D)에 몸이 돌면 화면이 홱 돌아간다. */
@@ -106,6 +112,14 @@ export function Character() {
 
     // 1인칭에서는 Q·E 로 정한 시선을 따라간다
     if (fpv) {
+      /* **시선 이어받기를 여기서 한다.** 예전엔 `WalkKeys` 가 했는데, r3f 는
+         useFrame 을 **붙은 순서대로** 돌린다 — `Character` 가 `WalkKeys` 보다
+         먼저다. 그래서 1인칭을 켠 첫 프레임에 아이가 **아직 안 이어받은 옛
+         시선(0)** 쪽으로 먼저 돌아 버렸다. 맵이 클수록 그 한 프레임이 길어서
+         (1인칭을 켜면 아래 면까지 다시 굽느라 멈칫한다) 아예 0 으로 **홱**
+         돌아갔고, 그 0 을 `WalkKeys` 가 이어받아 못 돌아왔다.
+         → 3구역에서 1인칭을 켜면 맵 밖 허공만 보였다. */
+      if (!INPUT.synced) { INPUT.heading = g.rotation.y; INPUT.synced = true; }
       g.rotation.y +=
         Math.atan2(
           Math.sin(INPUT.heading - g.rotation.y),
@@ -118,6 +132,16 @@ export function Character() {
     POSE.at.copy(g.position);
     POSE.yaw = g.rotation.y;
     POSE.scale = scale;
+
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__pose = {
+        칸: [Math.round(g.position.x / VOXEL), Math.round(g.position.z / VOXEL)],
+        아이방향: +((g.rotation.y * 180) / Math.PI).toFixed(0),
+        시선: +((INPUT.heading * 180) / Math.PI).toFixed(0),
+        이어받음: INPUT.synced,
+        자리잡은스테이지: spawnedFor.current,
+      };
+    }
 
     // 동반자 ✦ 는 아이 주위를 도는 위성이다 — 브랜드 은유 그대로
     if (companion.current) {

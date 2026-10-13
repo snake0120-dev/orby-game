@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Backdrop } from '../engine/Backdrop';
 import { Scene } from '../engine/Scene';
@@ -62,8 +62,12 @@ export function ZonePage({ spec, stage }: { spec: ZoneSpec; stage: Stage }) {
      양탄자 까는 규칙이 생성기(`zonekit.mjs`)와 여기(`parts.ts`) 양쪽에 있다.
      값은 맵 파일에서 같이 읽으니 어긋날 수 없지만 **코드는 두 벌**이다.
      그래서 구워진 맵을 받아 칸마다 맞춰 보고, 다르면 바로 콘솔에 찍는다. */
+  const checked = useRef(false);
   useEffect(() => {
-    if (!import.meta.env.DEV || !file) return;
+    if (!import.meta.env.DEV || !file || checked.current) return;
+    /* **한 번만 돈다.** 맵을 통째로 한 벌 더 조립하는 일이라, StrictMode 가
+       효과를 두 번 돌리는 개발 모드에서 그대로 두면 65만 칸을 두 번 짓는다. */
+    checked.current = true;
     let off = false;
     void (async () => {
       const res = await fetch(`${import.meta.env.BASE_URL}maps/${spec.map}.json?t=${Date.now()}`, { cache: 'no-store' });
