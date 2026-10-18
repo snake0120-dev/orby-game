@@ -427,6 +427,10 @@ const isleShell = (rect, y0, { 높이, 들보 }) => {
      열여섯 칸 위라, 35° 로 내려다보면 들보 하나가 제 그림자까지 두 칸을 먹는다.
      빛줄도 뺐다. 들보마다 빛을 넣으면 섬이 네온 격자가 된다. */
   const [x0, z0, x1, z1] = rect;
+  /* 들보 사이를 **유리 한 겹**으로 덮는다 (결정 ㉑ — 두 겹이면 사실상 불투명해진다).
+     위에서는 유리 너머로 섬 속이 그대로 읽히고, 1인칭에서는 덮인 건물 속이 된다.
+     들보는 **나중에** 그어서 유리 위에 얹는다. */
+  box(x0, 들보, z0, x1, 들보, z1, B.glass);
   for (let x = x0; x <= x1; x++)
     if (x % 10 === 0) box(x, 들보, z0, x, 들보, z1, B.cream);
 };
@@ -434,10 +438,18 @@ const isleShell = (rect, y0, { 높이, 들보 }) => {
 part('껍데기', '전광판 섬 껍데기', () => isleShell(ISLE_BOARD, L0 + 1, { 높이: 16, 들보: 21 }));
 part('껍데기', '탑승구 섬 껍데기', () => isleShell(ISLE_GATE, L0 + 1, { 높이: 16, 들보: 21 }));
 
-/* 다리는 바깥 통로다 — 벽도 지붕도 없이 난간만 두른다 (그림도 그렇다) */
-part('껍데기', '다리 난간', () => {
-  for (const rect of [BRIDGE_A, BRIDGE_B])
-    for (const [x, z] of edgesOf(mask([rect]))) rail(x, L1 + 1, z);
+/* 다리도 유리로 덮인 건너다리다 — 난간 + 유리 한 겹 + 들보.
+
+   지붕은 바닥에서 **일곱 칸**이다. 통로처럼 열 칸으로 올리면 y 23 이 되는데,
+   바로 옆 윗층 홀 바닥이 y 22 라 두 면이 한 높이로 겹쳐 읽힌다. */
+part('껍데기', '다리 난간과 지붕', () => {
+  for (const [x0, z0, x1, z1] of [BRIDGE_A, BRIDGE_B]) {
+    const y = L1 + 1, roof = L1 + 7;
+    for (const [x, z] of edgesOf(mask([[x0, z0, x1, z1]]))) rail(x, y, z);
+    box(x0, roof, z0, x1, roof, z1, B.glass);
+    for (let x = x0; x <= x1; x++)
+      if (x % 10 === 0) box(x, roof, z0, x, roof, z1, B.cream);
+  }
 });
 
 part('껍데기', '홀 지붕', () => {
