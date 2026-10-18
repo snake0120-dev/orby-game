@@ -44,7 +44,11 @@ const B = {
   pale:  mc('cyan_concrete_powder'),  // 바닥 윗면 — 옅은 민트
   deep:  mc('cyan_terracotta'),       // 바닥 옆면 · 벽
   cream: mc('smooth_sandstone'),      // 크림 테두리 띠 · 융단
-  glow:  mc('ochre_froglight'),       // 빛나는 띠 — 밝게 보이되 **전구는 아니다**
+  /* 빛은 **둘로 갈라 둔다.** 엔진은 빛나는 블록을 **종류마다 따로** 모아서
+     반경을 따로 줄 수 있다 (결정 ㉛·㊲). 2구역이 띠는 10칸, 바닥 빛길은 7칸으로
+     쓰고 있어서, 같은 블록 한 가지로 두면 터미널 벽 띠까지 7칸으로 줄어든다. */
+  glow:  mc('pearlescent_froglight'), // 벽 띠 · 판 몰딩 · 가구 — 반경 10칸
+  path:  mc('ochre_froglight'),       // 통로 바닥 빛길 — 반경 7칸. 2구역과 **같은 블록**
   white: mc('white_concrete'),        // 유리 통로 바닥
   amber: mc('yellow_terracotta'),     // 간판판 — 그림의 큰 황토색 판
   screen: mc('prismarine'),           // 간판 안에 박힌 민트 화면
@@ -448,14 +452,36 @@ part('껍데기', '홀 지붕', () => {
 });
 
 
-/* ═══ 5. 유리 통로 둘 — 2구역 것이 이어져 온다 ════════════════ */
+/* ═══ 5. 유리 통로 둘 — 2구역 것이 **그대로 이어져 온다** ══════
+   원본은 `make-zone2.mjs:311-323` 의 먼 쪽 통로다. 아이는 그 통로를 걸어 나와서
+   이 통로로 걸어 들어온다 — **같은 물건이라 단면이 한 칸도 달라선 안 된다.**
+   2구역은 바닥이 y 12, 여기는 y 4 라 **바닥 기준 상대 높이**로 옮긴다.
+
+     바닥  −1   빛길 (왼쪽에서 5~8칸째)      ochre_froglight
+     바닥   0   흰 바닥 · 양 끝 크림 연석 · 빛길 위 유리
+     바닥 +1~3  난간 — **먼 쪽 한 줄만** (가까운 쪽은 열어 둬야 속이 보인다)
+     바닥 +10   유리 지붕 — **한 겹만** (결정 ㉑)
+     갈비 16칸마다 — 바닥 가로선 · 양쪽 기둥 · 윗 보
+
+   갈비는 **이음매 쪽 끝에서 3칸째부터** 센다. 2구역도 끝에서 3칸째라, 그래야
+   건너가는 순간 갈비 간격이 끊기지 않는다. */
 for (const [i, [x0, z0, x1, z1, top]] of [TUBE_A, TUBE_B].entries()) {
+  const ROOF_Y = top + 10, PARA_Y = top + 3;
   part('통로', `유리 통로 ${i + 1}`, () => {
     box(x0, top - 2, z0, x1, top, z1, B.deep);
-    box(x0, top, z0, x1, top, z1, B.white);            // 흰 바닥
-    for (let z = z0; z <= z1; z++) {
-      set(x0, top + 1, z, B.cream);                    // 양쪽 크림 연석
-      set(x1, top + 1, z, B.cream);
+    box(x0, top, z0, x1, top, z1, B.white);                      // 흰 바닥
+    box(x0, top, z0, x0, top, z1, B.cream);                      // 양 끝 크림 연석
+    box(x1, top, z0, x1, top, z1, B.cream);
+    box(x0, top + 1, z0, x0, PARA_Y, z1, B.white);               // 먼 쪽 난간
+    box(x0, ROOF_Y, z0, x1, ROOF_Y, z1, B.glass);                // 유리 지붕
+    /* 바닥 빛길 — 유리 한 겹 밑에 빛 블록. 2구역이 통로 시작에서 5~8칸째라 그대로. */
+    box(x0 + 5, top - 1, z0, x0 + 8, top - 1, z1, B.path);
+    box(x0 + 5, top, z0, x0 + 8, top, z1, B.glass);
+    for (let z = z1 - 3; z >= z0 + 2; z -= 16) {                 // 갈비
+      box(x0, top, z, x1, top, z, B.cream);
+      box(x0, top + 1, z, x0, ROOF_Y, z, B.cream);
+      box(x1, top + 1, z, x1, ROOF_Y, z, B.cream);
+      box(x0, ROOF_Y, z, x1, ROOF_Y, z, B.cream);
     }
   });
 }
@@ -589,10 +615,25 @@ const walk = layWalk(composed, { SIZE: c.SIZE, palette: c.palette, ...WALK_SPEC,
 const SPAWN = [27, TUBE_A[4] + 1, 101];
 composed[SPAWN[0] * H * D + SPAWN[1] * D + SPAWN[2]] = c.palette.indexOf(M.spawn);
 
+/* 관문은 **빛나는 탑승구 아치 아래**다 (`arch(62, 72, 8, 9, true)` 의 문간).
+   이 구역에서 아이가 배우는 게 "안내를 보고 탑승구를 찾아간다"라서, 끝나는 자리가
+   탑승구여야 말이 된다.
+
+   처음엔 통로 B 의 끝에 뒀다가 옮겼다 — **화면 아래로 잘려서 안 보인다.**
+   맵 상자는 네모인데 지은 건 ㄱ자라 `cameraPadding` 을 0.78 로 당겨 놨고(스테이지
+   파일), 그 바깥은 화면에 안 들어온다. 아이가 못 가는 관문은 관문이 아니다.
+
+   여정에 들어가려면 관문이 **반드시** 있어야 한다. 없으면 "시작 → 관문까지 길이
+   있는가" 검사가 깨진다 (`validate.ts`). 그래서 여태 여정 밖에 뒀던 것이다. */
+const GATE_CELLS = [];
+for (let x = 64; x <= 68; x++) GATE_CELLS.push([x, L0 + 1, 73]);
+for (const [gx, gy, gz] of GATE_CELLS)
+  composed[gx * H * D + gy * D + gz] = c.palette.indexOf(M.gate);
+
 await saveZone(c, {
   name: 'airport', structure: 'airport',
   source: '(생성기 · 2번 이후 이어지는 부분 가이드)',
-  composed, walkSpec: WALK_SPEC, spawn: SPAWN, gate: [],
+  composed, walkSpec: WALK_SPEC, spawn: SPAWN, gate: GATE_CELLS,
 });
 
 /* ═══ 숫자 — 브라우저를 열기 전에 비용을 본다 ══════════════════ */

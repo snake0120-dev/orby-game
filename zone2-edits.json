@@ -1,1 +1,204 @@
-{"적은때": "2026-10-18T16:59:23.920Z", "지문": "dcni11", "전체뷰": {"cameraPadding": 0.57, "fpv": true, "characterScale": 2.4, "panX": -12, "panY": -4, "shadows": false}, "바뀐개체": [], "손블록": [{"자리": [48, 19, 77], "블록": "minecraft:glowstone"}, {"자리": [48, 18, 77], "블록": "minecraft:glowstone"}, {"자리": [48, 19, 78], "블록": "minecraft:glowstone"}, {"자리": [48, 18, 78], "블록": "minecraft:glowstone"}, {"자리": [48, 19, 79], "블록": "minecraft:glowstone"}, {"자리": [48, 18, 79], "블록": "minecraft:glowstone"}, {"자리": [48, 19, 80], "블록": "minecraft:glowstone"}, {"자리": [48, 18, 80], "블록": "minecraft:glowstone"}, {"자리": [48, 21, 81], "블록": "minecraft:glowstone"}, {"자리": [48, 20, 81], "블록": "minecraft:glowstone"}, {"자리": [48, 17, 81], "블록": "minecraft:glowstone"}, {"자리": [48, 16, 81], "블록": "minecraft:glowstone"}, {"자리": [48, 17, 82], "블록": "minecraft:glowstone"}, {"자리": [48, 18, 83], "블록": "minecraft:glowstone"}, {"자리": [48, 20, 82], "블록": "minecraft:glowstone"}, {"자리": [48, 19, 83], "블록": "minecraft:glowstone"}, {"자리": [48, 19, 81], "블록": "minecraft:glowstone"}, {"자리": [48, 18, 81], "블록": "minecraft:glowstone"}, {"자리": [48, 19, 82], "블록": "minecraft:glowstone"}, {"자리": [48, 18, 82], "블록": "minecraft:glowstone"}], "표식": [{"id": "체크포인트 1", "자리": [59, 125], "높이": 4, "크기": 1.4}, {"id": "체크포인트 2", "자리": [31, 120], "높이": 4, "크기": 1.4}, {"id": "체크포인트 3", "자리": [38, 14], "높이": 4, "크기": 1.4}]}
+{
+  "적은때": "2026-10-18T17:20:30.751Z",
+  "지문": "jbl4pw",
+  "전체뷰": {
+    "fpv": true,
+    "cameraPadding": 0.57,
+    "characterScale": 2.4,
+    "panX": -12,
+    "panY": -4,
+    "shadows": false
+  },
+  "바뀐개체": [],
+  "손블록": [
+    {
+      "자리": [
+        48,
+        19,
+        77
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        18,
+        77
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        19,
+        78
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        18,
+        78
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        19,
+        79
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        18,
+        79
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        19,
+        80
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        18,
+        80
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        21,
+        81
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        20,
+        81
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        17,
+        81
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        16,
+        81
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        17,
+        82
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        18,
+        83
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        20,
+        82
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        19,
+        83
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        19,
+        81
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        18,
+        81
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        19,
+        82
+      ],
+      "블록": "minecraft:glowstone"
+    },
+    {
+      "자리": [
+        48,
+        18,
+        82
+      ],
+      "블록": "minecraft:glowstone"
+    }
+  ],
+  "표식": [
+    {
+      "id": "체크포인트 1",
+      "자리": [
+        59,
+        125
+      ],
+      "높이": 4,
+      "크기": 1.4
+    },
+    {
+      "id": "체크포인트 2",
+      "자리": [
+        31,
+        120
+      ],
+      "높이": 4,
+      "크기": 1.4
+    },
+    {
+      "id": "체크포인트 3",
+      "자리": [
+        38,
+        14
+      ],
+      "높이": 4,
+      "크기": 1.4
+    }
+  ]
+}
