@@ -302,6 +302,84 @@ part('아트리움', '서 있는 문틀', () => {
   box(9, y + 9, 9, 17, y + 9, 10, B.cream);
 });
 
+/* ═══ 4.5. 껍데기 — 층마다 자기 벽과 지붕 ═════════════════════
+   2구역은 홀이 한 층이라 맵 전체를 **한 상자**로 둘러막았다 (결정 ㉟). 3구역은
+   층이 셋이라 그게 안 된다 — 한 상자로 묶으면 아래 섬이 상자 속에 갇혀 위에서
+   안 보인다. 그래서 **바닥판마다 껍데기를 하나씩** 세운다. 바닥 모양 그대로,
+   그 층 높이에서. 높이는 손으로 안 적고 그 판의 윗면(L0/L1/L2)에서 쌓는다.
+
+   카메라는 (+x, +y, +z) 에서 내려다본다 (결정 ⑧):
+
+     먼 쪽  (x·z 작은 쪽)  진짜 벽. 카메라 반대편이라 아무것도 안 가린다.
+     가까운 쪽(x·z 큰 쪽)  홀은 진짜 벽을 세우고 **엔진이 턱만 남기고 자른다**
+                          (`Stage.cutaway`). 섬·다리는 허리 높이 난간만 둔다 —
+                          자르는 높이가 윗층 기준이라 아래 섬엔 안 닿기 때문이다.
+
+   ── 문은 손으로 안 적는다 ───────────────────────────────────
+   벽이 계단 입구를 막으면 **그 층 전체가 못 가는 땅**이 되는데 화면으론 멀쩡하다.
+   그래서 `STAIRS` 와 `TUBE_A/B` 표에서 자리를 뽑아 한 칸씩 넓혀 문으로 비운다.
+   계단을 옮기면 문도 따라 옮겨간다. 그래도 막히면 `reachFrom` 이 몇 칸인지 찍는다. */
+
+/** 계단·통로가 지나가는 자리 — 여기엔 벽을 안 세운다 */
+const DOOR = new Uint8Array(W * D);
+const markDoor = (x0, z0, x1, z1) => {
+  for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++)
+    for (let z = Math.max(0, z0 - 1); z <= Math.min(D - 1, z1 + 1); z++) DOOR[z * W + x] = 1;
+};
+for (const [, x0, z0, x1, z1] of STAIRS) markDoor(x0, z0, x1, z1);
+for (const [x0, z0, x1, z1] of [TUBE_A, TUBE_B]) markDoor(x0, z0, x1, z1);
+
+/** 바닥판 가장자리 칸 — `plate()` 의 가장자리 판정(섹션 1)과 같은 규칙이다.
+    바닥판이 네모라서 2구역처럼 번져 나가는 검사는 필요 없다.
+    모서리는 두 쪽 다인데, 그럴 땐 **가까운 쪽**으로 친다 (잘려야 하니까). */
+const edgesOf = (m) => {
+  const out = [];
+  for (let x = 0; x < W; x++)
+    for (let z = 0; z < D; z++) {
+      if (!has(m, x, z) || DOOR[z * W + x]) continue;
+      const near = !has(m, x + 1, z) || !has(m, x, z + 1);
+      const far = !has(m, x - 1, z) || !has(m, x, z - 1);
+      if (near || far) out.push([x, z, near]);
+    }
+  return out;
+};
+
+/** 벽 한 줄의 단면 — 2구역 `wallAt`(`make-zone2.mjs:419`) 을 3구역 높이로 옮겼다.
+    `y0` 는 바닥 위 첫 칸, `top` 은 꼭대기.
+
+    **턱(y0 … y0+2)에 공을 들인다.** 가까운 쪽 벽은 기본 화면에서 거기까지만 남고
+    위는 잘려 나간다 — 1인칭에서만 보이는 부분에 창을 크게 준다. */
+const wallAt = (x, y, z, y0, top) => {
+  if (y <= y0 + 1) return B.deep;                                // 걸레받이 — 민트 둘
+  if (y === y0 + 2) return B.cream;                              // 크림 띠 ← 잘린 꼭대기
+  if (y <= y0 + 4) return B.pale;                                // 창 아래 벽
+  if (y === top) return B.cream;                                 // 코니스
+  if (y === top - 1) return B.pale;                              // 윗벽
+  if (y === top - 2) return B.cream;                             // 띠 아래턱
+  if (y === top - 3) return (x + z) % 7 <= 2 ? B.glow : B.pale;   // 빛 띠 — 일곱 중 셋
+  if (y === top - 4) return B.cream;                             // 인방
+  return (x + z) % 7 === 0 ? B.deep : B.glass;                   // 창 — 일곱 칸마다 창틀
+};
+
+/* ── 윗층 홀의 앞벽 ─────────────────────────────────────────
+   먼 쪽 두 면(x=0 · z=0)은 섹션 3 의 체크인 벽·창가 벽이 이미 서 있다. 여기서는
+   **가까운 쪽만** 세운다 — ㄱ자의 두 팔 끝막음(z=60 · x=92)도 가까운 쪽이다.
+   꼭대기는 기존 두 벽과 **같은 `topAt`** 을 쓴다. 갈리면 앞벽과 뒷벽의 키가 안
+   맞아 방이 비뚤어 보인다. 체크인 팔은 z 로, 창가 팔은 x 로 깎인다. */
+const HALL = mask([HALL_CHECKIN, HALL_WINDOW]);
+const hallNear = (arm) => {
+  for (const [x, z, isNear] of edgesOf(HALL)) {
+    if (!isNear) continue;
+    const mine = z > ATRIUM ? '체크인' : '창가';
+    if (mine !== arm) continue;
+    const top = topAt(mine === '체크인' ? z : x);
+    for (let y = WY0; y <= top; y++) set(x, y, z, wallAt(x, y, z, WY0, top));
+  }
+};
+part('껍데기', '홀 앞벽 (체크인 쪽)', () => hallNear('체크인'));
+part('껍데기', '홀 앞벽 (창가 쪽)', () => hallNear('창가'));
+
+
 /* ═══ 5. 유리 통로 둘 — 2구역 것이 이어져 온다 ════════════════ */
 for (const [i, [x0, z0, x1, z1, top]] of [TUBE_A, TUBE_B].entries()) {
   part('통로', `유리 통로 ${i + 1}`, () => {
