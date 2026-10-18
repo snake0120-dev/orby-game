@@ -72,7 +72,8 @@ export const immigration: Stage = {
   marks: [
     { id: '체크포인트 1', at: [59, 125], height: 4, scale: 1.4 },
     { id: '체크포인트 2', at: [31, 120], height: 4, scale: 1.4 },
-    { id: '체크포인트 3', at: [38, 0], height: 4, scale: 1.4 },
+    // 통로 입구(z 1)에는 이제 관문 ✦ 가 뜬다 — 별이 둘 겹치지 않게 통로 중간으로 물렸다
+    { id: '체크포인트 3', at: [38, 14], height: 4, scale: 1.4 },
   ],
 
   props: [],
