@@ -438,14 +438,30 @@ const isleShell = (rect, y0, { 높이, 들보 }) => {
 part('껍데기', '전광판 섬 껍데기', () => isleShell(ISLE_BOARD, L0 + 1, { 높이: 16, 들보: 21 }));
 part('껍데기', '탑승구 섬 껍데기', () => isleShell(ISLE_GATE, L0 + 1, { 높이: 16, 들보: 21 }));
 
-/* 다리도 유리로 덮인 건너다리다 — 난간 + 유리 한 겹 + 들보.
+/* 가운데 작은 섬 둘(= 다리 A·B) — 난간을 **벽으로 올려** 유리로 덮인 건너다리가 됐다.
 
-   지붕은 바닥에서 **일곱 칸**이다. 통로처럼 열 칸으로 올리면 y 23 이 되는데,
-   바로 옆 윗층 홀 바닥이 y 22 라 두 면이 한 높이로 겹쳐 읽힌다. */
-part('껍데기', '다리 난간과 지붕', () => {
+   층고는 바닥에서 **열 칸**이다(걷는 높이에서 아홉 칸). 일곱 칸으로 지었더니 낮아서
+   복도가 아니라 터널로 읽혔다. 지붕이 y 23 이라 바로 옆 윗층 홀 바닥(y 22)과 한 칸
+   차이인데, 평면에서 안 겹쳐서 섞여 보이지는 않는다 (`checkRegions` 가 지킨다).
+
+   벽은 **불투명과 유리를 섞는다.** 아래는 민트 걸레받이, 가운데는 창(일곱 칸마다
+   창틀), 꼭대기는 크림 인방. **가까운 쪽은 걸레받이를 한 칸만** 둬서 바닥까지
+   들여다보인다 — 카메라가 그쪽에서 내려다보는데 막아 두면 다리 속이 안 보인다. */
+const bridgeWall = (x, z, y0, top, isNear) => {
+  const sill = isNear ? y0 : y0 + 1;                 // 걸레받이 높이
+  for (let y = y0; y <= top; y++) {
+    if (y <= sill) { set(x, y, z, B.deep); continue; }
+    if (y === sill + 1) { set(x, y, z, B.cream); continue; }   // 크림 창턱
+    if (y === top) { set(x, y, z, B.cream); continue; }        // 크림 인방
+    set(x, y, z, (x + z) % 7 === 0 ? B.deep : B.glass);        // 창 — 일곱 칸마다 창틀
+  }
+};
+
+part('껍데기', '가운데 섬 둘 (다리)', () => {
   for (const [x0, z0, x1, z1] of [BRIDGE_A, BRIDGE_B]) {
-    const y = L1 + 1, roof = L1 + 7;
-    for (const [x, z] of edgesOf(mask([[x0, z0, x1, z1]]))) rail(x, y, z);
+    const y0 = L1 + 1, roof = L1 + 10;
+    for (const [x, z, isNear] of edgesOf(mask([[x0, z0, x1, z1]])))
+      bridgeWall(x, z, y0, roof - 1, isNear);
     box(x0, roof, z0, x1, roof, z1, B.glass);
     for (let x = x0; x <= x1; x++)
       if (x % 10 === 0) box(x, roof, z0, x, roof, z1, B.cream);
