@@ -468,7 +468,9 @@ part('껍데기', '홀 지붕', () => {
 for (const [i, [x0, z0, x1, z1, top]] of [TUBE_A, TUBE_B].entries()) {
   const ROOF_Y = top + 10, PARA_Y = top + 3;
   part('통로', `유리 통로 ${i + 1}`, () => {
-    box(x0, top - 2, z0, x1, top, z1, B.deep);
+    /* 밑동은 **다섯 겹**이다 — 2구역 통로와 같아야 테두리 두께가 안 달라진다
+       (`make-zone2.mjs` 의 `slab()`). 섬 바닥판도 같은 다섯 겹이다. */
+    box(x0, top - 4, z0, x1, top, z1, B.deep);
     box(x0, top, z0, x1, top, z1, B.white);                      // 흰 바닥
     box(x0, top, z0, x0, top, z1, B.cream);                      // 양 끝 크림 연석
     box(x1, top, z0, x1, top, z1, B.cream);
