@@ -217,7 +217,11 @@ export function Scene() {
       {fpv ? (
         <FirstPerson />
       ) : (
+        /* 구역이 바뀌면 카메라를 **새로 세운다.** 평소엔 씬이 통째로 내려갔다
+           올라와서 저절로 그랬는데, 이어진 통로에서는 씬이 안 내려가므로
+           감쇠 보간이 남아 이전 구역 자리에서 미끄러져 온다 (`IsoCamera`). */
         <IsoCamera
+          key={stage.id}
           lookAt={center}
           extent={extent}
           maxHeight={maxHeight}

@@ -78,7 +78,8 @@ export const immigration: Stage = {
 
   props: [],
   missions: [],
-  gate: { opensOn: [] },
+  /* 이 관문은 **3구역으로 이어진 유리 통로**다 — 통과 화면 없이 넘어간다 (`Seam`). */
+  gate: { opensOn: [], seam: true },
   /**
    * **앞쪽 벽을 턱 세 칸만 남기고 자른다.**
    *

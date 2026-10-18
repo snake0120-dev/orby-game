@@ -5,6 +5,7 @@ import { Backdrop } from './engine/Backdrop';
 import { Hud } from './ui/Hud';
 import { Companion } from './ui/Companion';
 import { ErrorScreen, Finished, Loading, StageClear, Title } from './ui/Screens';
+import { Seam } from './ui/Seam';
 import { useGame } from './game/store';
 import { useDev } from './game/devStore';
 import { DevReadout } from './ui/DevReadout';
@@ -100,7 +101,8 @@ export default function App() {
           className="overlay"
           style={panelOpen ? { paddingLeft: 'calc(var(--u) * 27.5)' } : undefined}
         >
-          {phase === 'playing' ? <Hud /> : <div />}
+          {/* 이음매(`seam`)에서도 HUD 를 그대로 둔다 — 빠졌다 들어오면 막 가장자리에서 깜빡인다 */}
+          {phase === 'playing' || phase === 'seam' ? <Hud /> : <div />}
           {/* 말풍선은 항상 화면 아래쪽. 씬 한가운데를 가리면 안 된다. */}
           <Companion />
         </div>
@@ -109,6 +111,8 @@ export default function App() {
         {phase === 'loading' && <Loading />}
         {phase === 'error' && <ErrorScreen />}
         {phase === 'stageClear' && <StageClear />}
+        {/* 이어진 통로의 이음매 — 늘 떠 있고 투명도만 바뀐다 */}
+        <Seam />
         {phase === 'finished' && <Finished />}
       </div>
 

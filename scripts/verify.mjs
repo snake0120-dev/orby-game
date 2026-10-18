@@ -111,7 +111,11 @@ const PROBE = `(async () => {
     S().requestMove(g);
     ck(id + ' 관문까지 경로', S().path.length > 0, g);
     await drain();
-    ck(id + ' 관문 통과', S().phase === 'stageClear', S().phase);
+    /* 'seam' 은 **이어진 통로**로 넘어가는 중이라는 뜻이다 (2구역 → 3구역).
+       (이 블록은 템플릿 문자열 안이라 **백틱을 쓰면 안 된다** — 문자열이 끊긴다.)
+       통과 화면 대신 화면이 한 번 덮였다 걷히는 동안 맵이 갈린다 — 구역이 끝난
+       것은 똑같다. 막을 걷는 건 React 쪽 타이머라 여기서는 기다리지 않는다. */
+    ck(id + ' 관문 통과', S().phase === 'stageClear' || S().phase === 'seam', S().phase);
   }
 
   // 마지막 구역 다음은 완주 화면

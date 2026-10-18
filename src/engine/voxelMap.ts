@@ -282,7 +282,38 @@ export function compileVoxelMap(raw: RawMap): VoxelMap {
   return { w, h, d, palette: raw.palette, cells, colors, translucent, emissive, stairs, walkY, gate, spawn, slots, lamps, unknown };
 }
 
-export async function loadVoxelMap(file: string): Promise<VoxelMap> {
+/**
+ * **미리 받아 둔 맵 한 개.**
+ *
+ * 이어진 통로(`GateDef.seam`)로 넘어갈 때 그 자리에서 맵을 받으면 번짐이 끝난 뒤에도
+ * 한참 비어 있다. 그래서 2구역에 들어서는 순간 3구역 맵을 가만히 받아 둔다.
+ *
+ * **키는 파일 이름만** 쓴다 — 아래에서 개발용으로 주소에 시각을 붙이기 때문에
+ * 주소를 키로 쓰면 미리 받아 둔 걸 영영 못 찾는다.
+ *
+ * **한 번 쓰면 버린다.** 계속 들고 있으면 맵을 다시 구웠는데도 브라우저가 옛 걸
+ * 물고 있어서 "안 바뀌었다"고 헤매게 된다.
+ */
+const PREFETCH = new Map<string, Promise<VoxelMap>>();
+
+/** 다음 구역 맵을 미리 받아 둔다. 실패해도 조용히 지나간다 — 넘어갈 때 다시 받는다. */
+export function prefetchVoxelMap(file: string): void {
+  if (PREFETCH.has(file)) return;
+  const p = fetchVoxelMap(file);
+  p.catch(() => PREFETCH.delete(file));
+  PREFETCH.set(file, p);
+}
+
+export function loadVoxelMap(file: string): Promise<VoxelMap> {
+  const ready = PREFETCH.get(file);
+  if (ready) {
+    PREFETCH.delete(file);
+    return ready;
+  }
+  return fetchVoxelMap(file);
+}
+
+async function fetchVoxelMap(file: string): Promise<VoxelMap> {
   // 개발 중에는 캐시를 끊는다. 맵을 다시 임포트했는데 브라우저가 옛 JSON 을
   // 그대로 물고 있으면 "안 바뀌었다"고 한참 헤매게 된다. 전시 빌드에는 안 붙는다.
   const bust = import.meta.env.DEV ? `?t=${Date.now()}` : '';

@@ -1,11 +1,18 @@
 import { create } from 'zustand';
 import { findPath, type Cell } from '../engine/Pathfinder';
-import { isGateCell, isWalkable, loadVoxelMap, type VoxelMap } from '../engine/voxelMap';
+import {
+  isGateCell, isWalkable, loadVoxelMap, prefetchVoxelMap, type VoxelMap,
+} from '../engine/voxelMap';
 import { DEV_STAGES, STAGES } from './stages';
 import { validateStage } from './validate';
 import type { MissionDef, PropDef, Stage } from './types';
 
-export type Phase = 'title' | 'loading' | 'playing' | 'stageClear' | 'finished' | 'error';
+/**
+ * `seam` 은 **이어진 통로로 넘어가는 중**이다 (`GateDef.seam`). 통과 화면도 로딩도
+ * 없고, 화면이 한 번 밝게 덮였다 걷히는 동안 맵만 조용히 갈린다.
+ */
+export type Phase =
+  | 'title' | 'loading' | 'playing' | 'stageClear' | 'seam' | 'finished' | 'error';
 
 interface GameState {
   phase: Phase;
@@ -46,6 +53,13 @@ interface GameState {
    */
   replaceMap: (map: VoxelMap) => void;
   nextStage: () => Promise<void>;
+  /**
+   * **화면을 안 비우고** 다음 구역으로 넘어간다 — 이어진 통로 전용.
+   *
+   * `loadStage` 는 맨 먼저 `map: null` 을 넣어서 3D 씬이 통째로 내려갔다 올라온다
+   * (그래서 검은 화면이 보인다). 여기서는 맵을 **먼저 받아 두고 한 번에** 갈아끼운다.
+   */
+  crossSeam: () => Promise<void>;
   /** 클릭한 칸까지 길찾기로 걸어간다. 길이 없으면 아무 일도 안 일어난다. */
   requestMove: (target: Cell) => void;
   requestInteract: (prop: PropDef) => void;
@@ -61,6 +75,29 @@ interface GameState {
 /** 선행 미션이 전부 끝났는지 */
 export const isUnlocked = (m: MissionDef, done: string[]): boolean =>
   (m.requires ?? []).every((r) => done.includes(r));
+
+/** 다음 구역이 **이어진 통로**로 붙어 있으면 그 맵을 미리 받아 둔다 */
+function prefetchNext(index: number) {
+  const next = STAGES[index + 1];
+  if (next && STAGES[index]?.gate.seam) prefetchVoxelMap(next.map);
+}
+
+/** 개발 중에만 — 모르는 블록과 맵 문제를 콘솔에 찍는다 */
+function devCheck(stage: Stage, map: VoxelMap) {
+  if (!import.meta.env.DEV) return;
+  if (map.unknown.length) {
+    console.warn(
+      `[ORBY] blocks.ts 표에 없는 블록 ${map.unknown.length}종 — 화면에 안 그려집니다:\n` +
+        map.unknown.map((b) => `  · ${b}`).join('\n'),
+    );
+  }
+  const problems = validateStage(stage, map);
+  if (problems.length) {
+    console.group(`[ORBY] ${stage.id} 맵 문제 ${problems.length}건`);
+    problems.forEach((q) => console.warn(q));
+    console.groupEnd();
+  }
+}
 
 /** 관문이 열렸는지 — gate.opensOn이 전부 완료됐을 때 */
 export const isGateOpen = (stage: Stage, done: string[]): boolean =>
@@ -103,6 +140,44 @@ export const useGame = create<GameState>((set, get) => ({
     }
     await get().loadStage(STAGES[index]);
     set({ stageIndex: index });
+    prefetchNext(index);
+  },
+
+  crossSeam: async () => {
+    /* 아직 이음매를 건너는 중인가. 막이 덮이는 사이에 다른 데서 구역을 갈아치웠으면
+       (검사기가 `goToStage` 를 부르는 경우) 여기서 멈춘다 — 안 그러면 방금 띄운
+       구역 위로 한 구역 더 넘어가 버린다. */
+    if (get().phase !== 'seam') return;
+    const index = get().stageIndex + 1;
+    if (index < 0 || index >= STAGES.length) {
+      set({ phase: 'finished' });
+      return;
+    }
+    const stage = STAGES[index];
+    let map: VoxelMap;
+    try {
+      map = await loadVoxelMap(stage.map);
+    } catch (e) {
+      set({ phase: 'error', error: e instanceof Error ? e.message : String(e) });
+      return;
+    }
+    devCheck(stage, map);
+    /* `loadStage` 와 **같은 것들을 지우되**, `map: null` 을 거치지 않는다 —
+       씬이 안 내려가므로 화면이 안 빈다. `stageIndex` 도 같은 묶음에 넣어서
+       중간에 "이전 구역"으로 읽히는 틈이 없게 한다. */
+    set({
+      phase: 'playing',
+      stage,
+      map,
+      stageIndex: index,
+      playerCell: map.spawn ?? [0, 0],
+      path: [],
+      pending: null,
+      moved: false,
+      done: [],
+      message: stage.intro ?? null,
+    });
+    prefetchNext(index);
   },
 
   loadStage: async (stage, prebuilt) => {
@@ -122,20 +197,7 @@ export const useGame = create<GameState>((set, get) => ({
       return;
     }
 
-    if (import.meta.env.DEV) {
-      if (map.unknown.length) {
-        console.warn(
-          `[ORBY] blocks.ts 표에 없는 블록 ${map.unknown.length}종 — 화면에 안 그려집니다:\n` +
-            map.unknown.map((b) => `  · ${b}`).join('\n'),
-        );
-      }
-      const problems = validateStage(stage, map);
-      if (problems.length) {
-        console.group(`[ORBY] ${stage.id} 맵 문제 ${problems.length}건`);
-        problems.forEach((p) => console.warn(p));
-        console.groupEnd();
-      }
-    }
+    devCheck(stage, map);
 
     set({
       phase: 'playing',
@@ -224,7 +286,8 @@ export const useGame = create<GameState>((set, get) => ({
       }
 
       if (isGateCell(s.map, next[0], next[1]) && isGateOpen(s.stage, s.done)) {
-        patch.phase = 'stageClear';
+        /* 이어진 통로면 통과 화면을 건너뛴다 — 같은 건물의 복도를 계속 걷는 중이다. */
+        patch.phase = s.stage.gate.seam ? 'seam' : 'stageClear';
         patch.path = [];
       }
       return patch as GameState;

@@ -116,6 +116,14 @@ export interface MissionDef {
 /** 관문 — 이 미션들이 전부 끝나면 열린다 */
 export interface GateDef {
   opensOn: string[];
+  /**
+   * 이 관문이 다음 구역과 **이어진 통로**인가.
+   *
+   * 2구역의 먼 쪽 유리 통로는 3구역의 유리 통로 A 로 그대로 이어진다 — 같은
+   * 건물의 한 복도다. 거기서 "통과!" 전체화면이 뜨면 한 건물이 두 동강 난다.
+   * 켜 두면 화면 없이 **밝게 한 번 번졌다가 그대로 이어서 걷는다** (`Seam`).
+   */
+  seam?: boolean;
 }
 
 export interface Stage {
