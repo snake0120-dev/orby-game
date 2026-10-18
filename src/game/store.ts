@@ -37,6 +37,14 @@ interface GameState {
   /** 여정에 없는 스테이지를 직접 띄운다 (맵 확인용) */
   /** 두 번째 인자를 주면 파일 대신 그 맵을 쓴다 (2구역 개체 패널이 합친 맵) */
   loadStage: (stage: Stage, prebuilt?: VoxelMap) => Promise<void>;
+  /**
+   * **맵만** 갈아끼운다 — 스테이지·진행·아이 자리는 그대로 둔다.
+   *
+   * 구역 편집기가 쓴다. 블록 한 칸을 놓을 때마다 `loadStage` 를 부르면
+   * `phase: 'loading'` 을 거치면서 화면이 한 번 비고(씬이 통째로 다시 올라간다)
+   * 아이가 시작 자리로 되돌아간다 — 블록 백 칸을 놓는 동안 백 번 그럴 수는 없다.
+   */
+  replaceMap: (map: VoxelMap) => void;
   nextStage: () => Promise<void>;
   /** 클릭한 칸까지 길찾기로 걸어간다. 길이 없으면 아무 일도 안 일어난다. */
   requestMove: (target: Cell) => void;
@@ -140,6 +148,16 @@ export const useGame = create<GameState>((set, get) => ({
       message: stage.intro ?? null,
     });
   },
+
+  replaceMap: (map) =>
+    set((s) => {
+      /* 아이가 서 있던 칸이 **없어졌을 수도** 있다 (그 칸을 지웠거나 위에
+         블록을 놓았거나). 그대로 두면 아이가 바닥 아래로 내려가 보이므로
+         시작 자리로 돌린다. */
+      const [x, z] = s.playerCell;
+      const here = isWalkable(map, x, z) ? s.playerCell : map.spawn ?? s.playerCell;
+      return { phase: 'playing', map, playerCell: here, path: [] };
+    }),
 
   nextStage: () => get().goToStage(get().stageIndex + 1),
 

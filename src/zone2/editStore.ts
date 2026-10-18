@@ -34,6 +34,8 @@ const writeView = (v: ViewTune) => {
 
 interface EditState {
   open: boolean;
+  /** 마지막으로 파일에 적은 때 — 패널이 "저장됨"을 보여주는 데 쓴다 */
+  savedAt: number | null;
   /** 지금 고른 개체 id — 방향키가 이걸 민다 */
   selected: string | null;
   /** 한 번에 미는 칸 수 */
@@ -41,11 +43,13 @@ interface EditState {
   edits: Edits;
   /** 개체가 아니라 **화면 전체**에 걸리는 값 — 줌·아이 키·그라디언트 */
   view: ViewTune;
-  set: (v: Partial<Omit<EditState, 'set' | 'nudge' | 'toggleHidden' | 'resetPart' | 'resetAll'>>) => void;
+  set: (v: Partial<Omit<EditState, 'set' | 'nudge' | 'toggleHidden' | 'resetPart' | 'resetAll' | 'hydrate'>>) => void;
   nudge: (id: string, dx: number, dy: number, dz: number) => void;
   setView: (v: ViewTune) => void;
   resetView: () => void;
   toggleHidden: (id: string) => void;
+  /** 파일에서 읽어 온 개체 자리로 통째로 바꾼다 (`zone2-edits.json`) */
+  hydrate: (edits: Edits) => void;
   resetPart: (id: string) => void;
   resetAll: () => void;
   /**
@@ -60,6 +64,7 @@ interface EditState {
 
 export const useEdit = create<EditState>((set) => ({
   open: false,
+  savedAt: null,
   selected: null,
   step: 1,
   edits: read(),
@@ -106,6 +111,8 @@ export const useEdit = create<EditState>((set) => ({
 
   resetAll: () => { write({}); return set({ edits: {} }); },
 
+  hydrate: (edits) => { write(edits); return set({ edits }); },
+
   syncStamp: (stamp) => {
     let seen: string | null = null;
     try { seen = localStorage.getItem(STAMP); } catch { /* 사생활 보호 창 */ }
@@ -113,6 +120,9 @@ export const useEdit = create<EditState>((set) => ({
     try { localStorage.setItem(STAMP, stamp); } catch { /* 무시 */ }
     if (seen !== null) write({});
     set(seen === null ? {} : { edits: {}, selected: null });
+    /* 붓으로 놓은 블록은 **안 버린다.** 자리가 절대 좌표라 이미 구워졌어도
+       한 번 더 얹으면 결과가 같고, 무엇보다 이제 그 값은 브라우저가 아니라
+       파일에 있다(`loadEdits`) — 여기서 지우면 파일과 어긋난다. */
     /* 전체 뷰 값은 **지우지 않는다.** 개체 자리와 달리 생성기에 반영해도
        스테이지 파일 쪽이라 지문과 상관이 없고, 지우면 맞춰 둔 톤이 날아간다. */
   },

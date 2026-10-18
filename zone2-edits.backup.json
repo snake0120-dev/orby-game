@@ -1,0 +1,791 @@
+{
+  "적은때": "2026-10-18T03:39:17.455Z",
+  "지문": "xlypx4",
+  "전체뷰": {
+    "cameraPadding": 0.57,
+    "fpv": true,
+    "characterScale": 2.4,
+    "panX": -12,
+    "panY": -4,
+    "shadows": false
+  },
+  "바뀐개체": [],
+  "손블록": [
+    {
+      "자리": [
+        74,
+        13,
+        103
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        13,
+        104
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        13,
+        105
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        13,
+        106
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        72,
+        12,
+        94
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        73,
+        12,
+        94
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        12,
+        94
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        72,
+        12,
+        95
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        73,
+        12,
+        95
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        12,
+        95
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        13,
+        95
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        72,
+        12,
+        96
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        73,
+        12,
+        96
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        12,
+        96
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        72,
+        12,
+        97
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        73,
+        12,
+        97
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        12,
+        97
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        72,
+        12,
+        98
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        73,
+        12,
+        98
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        12,
+        98
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        13,
+        107
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        13,
+        108
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        74,
+        13,
+        109
+      ],
+      "블록": "minecraft:cyan_concrete_powder"
+    },
+    {
+      "자리": [
+        89,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        88,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        89,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        88,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        75,
+        12,
+        90
+      ],
+      "지움": true
+    },
+    {
+      "자리": [
+        75,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        76,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        75,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        76,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        77,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        77,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        78,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        78,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        79,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        79,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        80,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        80,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        81,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        81,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        82,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        82,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        83,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        83,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        84,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        84,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        85,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        86,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        87,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        85,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        86,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        87,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        99,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        98,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        97,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        96,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        95,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        94,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        93,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        92,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        91,
+        13,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        89,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        88,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        87,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        86,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        85,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        84,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        83,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        82,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        81,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        80,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        79,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        78,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        77,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        76,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        75,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        91,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        91,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        92,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        92,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        99,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        98,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        97,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        93,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        96,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        94,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        95,
+        14,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        93,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        94,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        95,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        96,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        97,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        98,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        99,
+        15,
+        90
+      ],
+      "블록": "minecraft:white_concrete"
+    },
+    {
+      "자리": [
+        78,
+        13,
+        81
+      ],
+      "블록": "minecraft:shroomlight"
+    }
+  ]
+}

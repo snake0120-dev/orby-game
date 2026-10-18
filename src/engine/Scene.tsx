@@ -15,9 +15,13 @@ import { Prop } from './Prop';
 import { Gate } from './Gate';
 import { DevGrid } from './DevGrid';
 import { BackdropProp } from './BackdropProp';
+import { FloatMarks } from './FloatMark';
+import { useMarks } from '../game/markStore';
 import { BlockLights } from './BlockLights';
+import { BlockBrush } from './BlockBrush';
 import { Float } from './Float';
 import { useDev } from '../game/devStore';
+import { useBrush } from '../game/brushStore';
 import {
   DEFAULT_CHARACTER_SCALE, DEFAULT_GRAD, DEFAULT_MAIN, paintFromDef, useTune, type PaintTune,
 } from '../game/tuneStore';
@@ -80,14 +84,15 @@ const SCENE_HEADROOM = CHARACTER_H * 3;
  * 개라 이게 매 프레임의 가장 큰 덩어리다. 움직이는 건 걸어가는 아이 하나뿐이고
  * 걸음이 느려서, 세 프레임에 한 번이면 눈으로는 구분이 안 간다.
  */
-function ThrottledShadows() {
+function ThrottledShadows({ on }: { on: boolean }) {
   const n = useRef(0);
   /* `gl` 은 프레임 인자로 받는다. 훅이 돌려준 걸 밖에서 고치면 린트가 잡고,
      실제로도 렌더 밖에서 건드리는 셈이라 순서가 헷갈린다. */
   useFrame(({ gl }) => {
     const i = n.current++;
     if (i === 0) gl.shadowMap.autoUpdate = false;
-    gl.shadowMap.needsUpdate = i % 3 === 0;
+    // 꺼져 있으면 다시 그릴 것도 없다 (빛의 castShadow 가 이미 꺼져 있다)
+    gl.shadowMap.needsUpdate = on && i % 3 === 0;
   });
   return null;
 }
@@ -99,6 +104,7 @@ export function Scene() {
   const panX = useTune((s) => s.panX);
   const panY = useTune((s) => s.panY);
   const fpv = useTune((s) => s.fpv);
+  const shadows = useTune((s) => s.shadows);
 
   /**
    * 스테이지가 바뀌면 패널 값을 그 스테이지의 실제 값으로 맞춘다.
@@ -153,10 +159,15 @@ export function Scene() {
       paints,
       selected: 'main',
     });
+
+    /* 떠 있는 별 표식도 같이 되돌린다 — 2구역 체크포인트가 3구역까지
+       따라가면 안 된다. 구역 편집기는 이 뒤에 저장해 둔 값을 다시 꽂는다
+       (`Zone2` 의 `loadStage` 다음 줄). */
+    useMarks.getState().seed(stage.marks);
   }, [
     stage.id, stage.cameraPadding, stage.backdrops, stage.paint,
     stage.mainSaturation, stage.mainBrightness, stage.fadeTop, stage.fadeStrength,
-    stage.lightIntensity, stage.characterScale, stage.gradient,
+    stage.lightIntensity, stage.characterScale, stage.gradient, stage.marks,
   ]);
 
   const geom = useMemo(() => {
@@ -191,6 +202,9 @@ export function Scene() {
    */
   const onGround = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    /* 블록 붓이 켜져 있으면 클릭은 **설치**다 (`BlockBrush`). 그때도 아이가
+       같이 걸어가면, 블록 한 칸 놓을 때마다 아이가 화면을 가로지른다. */
+    if (useBrush.getState().on) return;
     const cell = pickCell(map, levels, e.ray);
     if (!cell) return;
     // 맵을 고칠 때 "이 칸이 몇 번인지" 보여주는 개발용 표시기(G 키)
@@ -219,14 +233,14 @@ export function Scene() {
         앰비언트를 높이면 전부 같은 밝기로 떠서 형태가 안 읽힌다.
         낮은 앰비언트 + 한쪽에서 오는 강한 직사광 + 반대쪽 차가운 반사광.
       */}
-      <ThrottledShadows />
+      <ThrottledShadows on={shadows} />
 
       <ambientLight intensity={0.34} />
       <hemisphereLight args={['#dbe7ef', '#20242c', 0.5]} />
       <directionalLight
         position={[center[0] + span * 0.6, span * 1.1, center[2] + span * 0.35]}
         intensity={1.5}
-        castShadow
+        castShadow={shadows}
         /* 그림자 지도 크기는 **맵 크기에 맞춘다.** 2구역처럼 넓은 맵에서
            2048 을 그대로 쓰면 한 텍셀이 덮는 면적이 커져 이득도 없으면서
            메모리와 샘플링만 비싸진다. */
@@ -245,9 +259,22 @@ export function Scene() {
         <BackdropProp key={b.id} id={b.id} file={b.map} />
       ))}
 
+      {/* 둥둥 떠 있는 ORBY 별 표식 — 구조물 바깥이라 `Float` 에 안 넣는다.
+          넣으면 건물이 오르내리는 것과 같이 움직여서 제 흔들림이 안 보인다. */}
+      <FloatMarks />
+
       <Float phase={0}>
-        <VoxelGrid map={map} cutMin={stage.cutaway} />
-        <BlockLights map={map} />
+        <VoxelGrid
+          map={map}
+          cutMin={stage.cutaway}
+          ceiling={stage.ceiling}
+          glowNear={stage.glowNear}
+          pathGlow={stage.pathGlow}
+        />
+        <BlockLights map={map} proximity={stage.glowNear} />
+        {/* 붓이 꺼져 있으면 아무것도 안 그린다. 구조물과 **같이 떠 있어야**
+            조준선이 반 칸 어긋나지 않아서 여기 둔다. */}
+        <BlockBrush />
       </Float>
       {stage.props.map((p) => (
         <Prop key={p.id} def={p} />

@@ -225,23 +225,50 @@ export function compileVoxelMap(raw: RawMap): VoxelMap {
      밝게 보이는 것과 빛을 뿜는 것은 다르다 — 빛나는 블록은 `buildGeometry` 가
      밝은 메시로 따로 빼기 때문에 전구 없이도 환하다. 둘을 안 나누면
      길이 60칸짜리 빛 띠 하나가 전구 15개가 된다 (3구역 공항이 그렇다). */
-  const CLUSTER = 4;
-  const buckets = new Map<string, { x: number; y: number; z: number; n: number }>();
+  /**
+   * 전구 수 상한.
+   *
+   * three 는 광원 하나마다 **화면의 모든 픽셀을** 다시 계산한다. 아홉 개가
+   * 스물한 개가 되면 칠하는 비용이 그대로 두 배가 된다 — 2구역에서 천우태가
+   * 글로스톤 예순여덟 칸을 놓자 바로 그렇게 됐다.
+   *
+   * 그래서 묶음 크기를 **상한에 걸릴 때까지 두 배씩 키운다.** 붙어 있는 등은
+   * 어차피 하나의 빛 덩어리로 보이므로, 커진 묶음도 자리만 조금 옮겨갈 뿐이다.
+   */
+  const MAX_LAMPS = 12;
+
+  /** 빛나는(= 전구) 칸을 한 번만 모아 둔다 */
+  const lampCells: [number, number, number][] = [];
   for (let x = 0; x < w; x++) {
     for (let y = 0; y < h; y++) {
       for (let z = 0; z < d; z++) {
         const v = cells[x * h * d + y * d + z];
-        if (v < 0 || !lamp[v]) continue;
-        const key = `${Math.floor(x / CLUSTER)},${Math.floor(y / CLUSTER)},${Math.floor(z / CLUSTER)}`;
-        const b = buckets.get(key) ?? { x: 0, y: 0, z: 0, n: 0 };
-        b.x += x; b.y += y; b.z += z; b.n++;
-        buckets.set(key, b);
+        if (v >= 0 && lamp[v]) lampCells.push([x, y, z]);
       }
     }
   }
-  const lamps: [number, number, number][] = [...buckets.values()].map((b) => [
-    b.x / b.n, b.y / b.n, b.z / b.n,
-  ]);
+
+  /* 보는 건 `emissive` 가 아니라 **`lamp`** 다 (`blocks.ts` 의 `isLamp`).
+     밝게 보이는 것과 빛을 뿜는 것은 다르다 — 빛나는 블록은 `buildGeometry` 가
+     밝은 메시로 따로 빼기 때문에 전구 없이도 환하다. 둘을 안 나누면
+     길이 60칸짜리 빛 띠 하나가 전구 15개가 된다 (3구역 공항이 그렇다). */
+  const bucketLamps = (size: number): [number, number, number][] => {
+    const buckets = new Map<string, { x: number; y: number; z: number; n: number }>();
+    for (const [x, y, z] of lampCells) {
+      const key = `${Math.floor(x / size)},${Math.floor(y / size)},${Math.floor(z / size)}`;
+      const b = buckets.get(key) ?? { x: 0, y: 0, z: 0, n: 0 };
+      b.x += x; b.y += y; b.z += z; b.n++;
+      buckets.set(key, b);
+    }
+    return [...buckets.values()].map((b) => [b.x / b.n, b.y / b.n, b.z / b.n]);
+  };
+
+  let cluster = 4;
+  let lamps = bucketLamps(cluster);
+  while (lamps.length > MAX_LAMPS && cluster < 128) {
+    cluster *= 2;
+    lamps = bucketLamps(cluster);
+  }
 
   // 맵을 위에서 내려다본 읽는 순서(위→아래, 왼쪽→오른쪽)로 번호를 매긴다.
   // 색으로 직접 지정한 자리(구버전)가 이미 있으면 그건 건드리지 않고 빈 번호만 채운다.

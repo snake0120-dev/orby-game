@@ -15,6 +15,9 @@
     "map:check": "node scripts/check-map.mjs",
     "map:stages": "node scripts/make-stage-maps.mjs",
     "map:zone2": "node scripts/make-zone2.mjs",
+    "zone2:bake": "node scripts/bake-zone2.mjs",
+    "zone2:path": "node scripts/lightpath-zone2.mjs",
+    "zone2:marks": "node scripts/marks-zone2.mjs",
     "map:zone3": "node scripts/make-zone3.mjs",
     "zone2:compare": "node scripts/compare-zone.mjs zone2",
     "zone3:compare": "node scripts/compare-zone.mjs zone3"

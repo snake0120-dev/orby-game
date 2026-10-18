@@ -1,4 +1,6 @@
 import { compileVoxelMap, type VoxelMap } from '../engine/voxelMap';
+import { blockKey, parseBlockKey, type BlockEdits } from '../game/brushStore';
+import { MARK_DEFAULT, type Mark } from '../game/markStore';
 
 /**
  * 2구역 맵을 **개체 단위로** 읽고 다시 합친다.
@@ -24,6 +26,12 @@ export interface PartDef {
   blocked: [number, number, number, number] | null;
 }
 
+/** 손으로 놓은(또는 지운) 블록 한 칸 — `block: null` 은 지운 칸이다 */
+export interface HandBlock {
+  at: [number, number, number];
+  block: string | null;
+}
+
 export interface PartsFile {
   /** 개체 자리의 지문 — 생성기에 값을 반영하면 바뀐다 */
   stamp: string;
@@ -36,6 +44,13 @@ export interface PartsFile {
   gate: [number, number, number][];
   base: number[];
   parts: PartDef[];
+  /**
+   * 생성기가 이미 **구워 넣은** 손 블록 (`zone2-edits.json` 에서 읽어 온 것).
+   *
+   * 바탕에 섞지 않고 따로 들고 있는 이유: 개체보다 **나중에** 얹혀야 한다.
+   * 바탕에 섞으면 부스를 옮겼을 때 손으로 놓은 블록이 부스에 덮인다.
+   */
+  handBlocks?: HandBlock[];
 }
 
 /** 개체마다의 편집 — 밀어낸 칸 수와 숨김 여부 */
@@ -60,6 +75,11 @@ export interface ViewTune {
   panY?: number;
   /** 아이의 1인칭 눈으로 볼 것인가 */
   fpv?: boolean;
+  /** 그림자를 드리울 것인가 */
+  shadows?: boolean;
+  /** 빛길이 아이 둘레로 켜지는 반경 (칸) */
+  pathRadius?: number;
+  glowRadius?: number;
 }
 
 /* 풀어 둔 결과를 들고 있는다. 개체를 한 칸 밀 때마다 바탕 56만 칸과 개체
@@ -106,10 +126,18 @@ export const placedAt = (p: PartDef, e: Edits): [number, number, number] => {
  * 옮겼을 때 옛 자리에 양탄자가 남고 새 자리는 벽 밑으로 깔려서 길이 엉킨다.
  * 규칙은 생성기와 같다 — 판 윗면이 있고 그 위가 비었으면 걸을 수 있다.
  */
-export function compose(f: PartsFile, edits: Edits): VoxelMap {
+export function compose(f: PartsFile, edits: Edits, hand: BlockEdits = {}): VoxelMap {
   const [W, H, D] = f.size;
   const idx = (x: number, y: number, z: number) => x * H * D + y * D + z;
   const cells = decode(f.base).slice();   // 바탕은 캐시에서 복사만 한다
+
+  /* 팔레트는 **늘어날 수 있다.** 붓으로 이 구역에 없던 블록을 놓으면
+     이름을 뒤에 붙인다 — 맵 파일을 다시 굽지 않아도 바로 보인다. */
+  const palette = f.palette.slice();
+  const idOf = (name: string) => {
+    const i = palette.indexOf(name);
+    return i >= 0 ? i : palette.push(name) - 1;
+  };
 
   const blocks: [number, number, number, number][] = [];
   for (const p of f.parts) {
@@ -136,7 +164,20 @@ export function compose(f: PartsFile, edits: Edits): VoxelMap {
     }
   }
 
-  const walkId = f.palette.indexOf(f.walk);
+  /* ── 손으로 놓은 블록 ───────────────────────────────────
+     **개체 다음, 양탄자 앞**이다. 개체 다음이라야 부스 위에 창틀 한 칸을 얹을
+     수 있고, 양탄자 앞이라야 놓은 블록 위로 걷는 칸이 안 깔린다.
+     생성기가 이미 구운 것(`f.handBlocks`)을 먼저, 아직 안 구운 것(`hand`)을
+     그 위에 얹는다 — 같은 칸이면 지금 손에 든 쪽이 이긴다. */
+  const putHand = (at: [number, number, number], name: string | null) => {
+    const [x, y, z] = at;
+    if (x < 0 || y < 0 || z < 0 || x >= W || y >= H || z >= D) return;
+    cells[idx(x, y, z)] = name === null ? -1 : idOf(name);
+  };
+  for (const h of f.handBlocks ?? []) putHand(h.at, h.block);
+  for (const [key, name] of Object.entries(hand)) putHand(parseBlockKey(key), name);
+
+  const walkId = palette.indexOf(f.walk);
   const Y = f.floorTop + 1;
   if (walkId >= 0 && Y < H) {
     for (let x = 0; x < W; x++)
@@ -151,16 +192,17 @@ export function compose(f: PartsFile, edits: Edits): VoxelMap {
           if (cells[idx(x, Y, z)] === walkId) cells[idx(x, Y, z)] = -1;
   }
 
+  /* 시작·관문 자리는 **맨 마지막**이다. 붓으로 그 위에 뭘 놓아도 자리는 남는다 —
+     지워 버리면 아이가 설 곳이 없어 구역이 열리지 않는다. */
   const mark = (p: [number, number, number], name: string) => {
-    const i = f.palette.indexOf(name);
-    if (i >= 0) cells[idx(p[0], p[1], p[2])] = i;
+    cells[idx(p[0], p[1], p[2])] = idOf(name);
   };
   mark(f.spawn, 'minecraft:lime_carpet');
   for (const g of f.gate) mark(g, 'minecraft:red_carpet');
 
   return compileVoxelMap({
     source: '(개체 패널)', structure: 'immigration',
-    size: f.size, palette: f.palette, rle: [], cells,
+    size: f.size, palette, rle: [], cells,
   });
 }
 
@@ -172,7 +214,81 @@ export function compose(f: PartsFile, edits: Edits): VoxelMap {
  * 건너뛸 방법이 없었다 — 파일로 떨어뜨리면 둘 다 같은 걸 본다.
  * 받는 쪽은 `vite.config.ts` 의 `zone2Edits` 플러그인.
  */
-export async function saveToFile(f: PartsFile, edits: Edits, view: ViewTune): Promise<void> {
+/** 개발 서버의 편집 파일 창구 (`vite.config.ts` 의 `zoneEdits`) */
+const EDITS_URL = '/__zone2-edits';
+
+/** 파일에서 읽어 온 편집 — 브라우저 저장소보다 **이쪽이 우선**이다 */
+export interface SavedEdits {
+  stamp: string | null;
+  parts: Edits;
+  blocks: BlockEdits;
+  view: ViewTune;
+  /** 떠 있는 별 표식. `null` 이면 파일에 적힌 적이 없다 — 스테이지 기본값을 쓴다. */
+  marks: Mark[] | null;
+}
+
+/**
+ * **프로젝트 폴더의 `zone2-edits.json` 을 읽어 온다** (개발 서버에서만).
+ *
+ * 패널 값이 브라우저 저장소에만 있으면 **창마다 다른 걸 본다** — 천우태가
+ * 보는 크롬과 미리보기 창과 확인용 헤드리스가 전부 저장소가 따로다.
+ * "웹에서 블록을 놓았는데 다른 창에서는 안 보인다"가 정확히 그거였다.
+ * 그래서 파일을 한 군데 두고 셋 다 그걸 읽는다.
+ *
+ * 개체를 **민 거리**는 지문이 같을 때만 쓴다. 지문이 달라졌다는 건 생성기가
+ * 그 값을 이미 반영했다는 뜻이라, 또 밀면 두 배로 밀린다(결정 ㉔).
+ * 손으로 놓은 블록은 **절대 좌표**라 두 번 적용돼도 결과가 같다 — 그래서
+ * 지문과 상관없이 항상 쓴다.
+ */
+export async function loadEdits(stamp: string): Promise<SavedEdits | null> {
+  if (!import.meta.env.DEV) return null;
+  let saved: Record<string, unknown>;
+  try {
+    const res = await fetch(EDITS_URL, { cache: 'no-store' });
+    if (!res.ok) return null;
+    saved = (await res.json()) as Record<string, unknown>;
+  } catch {
+    return null;   // 개발 서버가 아니거나 아직 저장한 적이 없다
+  }
+
+  const blocks: BlockEdits = {};
+  for (const h of (saved.손블록 ?? []) as { 자리: number[]; 블록?: string; 지움?: boolean }[]) {
+    if (!Array.isArray(h.자리) || h.자리.length !== 3) continue;
+    blocks[blockKey(h.자리[0], h.자리[1], h.자리[2])] = h.지움 ? null : h.블록 ?? null;
+  }
+
+  const parts: Edits = {};
+  const fileStamp = (saved.지문 as string) ?? null;
+  if (fileStamp === stamp) {
+    for (const q of (saved.바뀐개체 ?? []) as { id: string; 민칸: [number, number, number]; 지움: boolean }[]) {
+      if (!q?.id) continue;
+      parts[q.id] = { d: q.민칸, hidden: q.지움 };
+    }
+  }
+
+  /* 표식은 **지문을 안 본다.** 블록이 아니라 그려 넣는 것이라, 생성기가
+     구워 넣는 일이 없어서 두 번 적용될 걱정이 없다. */
+  const rawMarks = saved.표식 as { id?: string; 자리?: number[]; 높이?: number; 크기?: number }[] | undefined;
+  const marks = rawMarks
+    ? rawMarks
+      .filter((m) => m?.id && Array.isArray(m.자리) && m.자리.length === 2)
+      .map((m) => ({
+        id: m.id!,
+        at: [m.자리![0], m.자리![1]] as [number, number],
+        height: m.높이 ?? MARK_DEFAULT.height,
+        scale: m.크기 ?? MARK_DEFAULT.scale,
+      }))
+    : null;
+
+  return {
+    stamp: fileStamp, parts, blocks, marks,
+    view: (saved.전체뷰 ?? {}) as ViewTune,
+  };
+}
+
+export async function saveToFile(
+  f: PartsFile, edits: Edits, view: ViewTune, hand: BlockEdits = {}, marks: Mark[] = [],
+): Promise<void> {
   const moved = f.parts.map((p) => {
     const e = edits[p.id];
     const d = e?.d ?? [0, 0, 0];
@@ -186,10 +302,21 @@ export async function saveToFile(f: PartsFile, edits: Edits, view: ViewTune): Pr
     };
   }).filter(Boolean);
 
-  const res = await fetch('/__zone2-edits', {
+  /* 손으로 놓은 블록. **생성기가 이걸 그대로 읽어 굽는다**
+     (`scripts/make-zone2.mjs`) — 백 칸을 사람이 옮겨 적을 수는 없다. */
+  const handBlocks = Object.entries(hand).map(([key, block]) => {
+    const [x, y, z] = parseBlockKey(key);
+    return block === null ? { 자리: [x, y, z], 지움: true } : { 자리: [x, y, z], 블록: block };
+  });
+
+  const res = await fetch(EDITS_URL, {
     method: 'POST',
     body: JSON.stringify(
-      { 적은때: new Date().toISOString(), 지문: f.stamp, 전체뷰: view, 바뀐개체: moved },
+      {
+        적은때: new Date().toISOString(), 지문: f.stamp, 전체뷰: view,
+        바뀐개체: moved, 손블록: handBlocks,
+        표식: marks.map((m) => ({ id: m.id, 자리: m.at, 높이: m.height, 크기: m.scale })),
+      },
       null, 2,
     ),
   });

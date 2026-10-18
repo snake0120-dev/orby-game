@@ -190,6 +190,36 @@ export interface TuneState {
   panY: number;
   /** 아이의 1인칭 눈으로 볼 것인가 */
   fpv: boolean;
+  /**
+   * 그림자를 드리울 것인가.
+   *
+   * 그림자 한 장을 만들려면 **맵 전체를 한 번 더 그려야 한다.** 2구역은 면이
+   * 만 팔천 장이라 매 프레임에서 제일 큰 덩어리다. 끄면 그만큼이 통째로
+   * 빠지므로, 전시 기기가 버거우면 여기서 먼저 끄고 본다.
+   */
+  shadows: boolean;
+  /**
+   * 빛길이 아이 둘레로 켜지는 반경 (칸).
+   *
+   * 2구역의 빛나는 블록은 평소엔 꺼져 있다가 아이가 다가오면 켜진다
+   * (`Stage.glowNear`). 블록을 다시 굽는 게 아니라 셰이더에서 거리로 끄는 거라
+   * 아이가 걸어다녀도 비용이 0이다. 진짜 전구(`BlockLights`)도 같은 값을 쓴다.
+   *
+   * **바닥에서 센 칸 수**다(높이는 안 본다). 바깥 두 줄은 반쯤 들어오므로,
+   * 7이면 다섯 줄이 환하고 여섯·일곱째 줄이 예고처럼 켜진다.
+   *
+   * 1인칭에서는 이 반경이 **아이 앞으로 밀려서** 걸린다 — 눈높이 때문에
+   * 발밑이 화면 밖이라 그렇다 (`VoxelGrid` 의 `FPV_LEAD`).
+   */
+  pathRadius: number;
+  /**
+   * **바닥 길이 아닌 조명**이 켜지는 반경 (칸).
+   *
+   * 벽·천장 띠, 부스 사인, 전구. 길(`pathRadius`)보다 넓어야 한다 — 길은
+   * 발밑이라 좁게 켜져야 "여기를 밟아라"가 되고, 방 조명은 둘러보는 것이라
+   * 좁으면 아이가 깜깜한 데 갇힌 것처럼 보인다.
+   */
+  glowRadius: number;
   /** 관문 ORBY 사인 크기 배수 */
   gateScale: number;
   /** ORBY 심볼(관문 사인 + 동반자)에서 나오는 빛의 세기 */
@@ -290,6 +320,9 @@ const DEFAULTS = {
   panX: 0,
   panY: 0,
   fpv: false,
+  shadows: true,
+  pathRadius: 7,
+  glowRadius: 10,
   gateScale: 0.76,
   symbolLight: 1.2,
   cameraPadding: 0.9,
@@ -328,6 +361,13 @@ export const useTune = create<TuneState>((set) => ({
     })),
   reset: () => set({ ...DEFAULTS, paints: {} }),
 }));
+
+/* 개발 중에만 콘솔에서 값을 만질 수 있게 열어 둔다 — 헤드리스 크롬으로 화면을
+   확인할 때 패널을 클릭하지 않고 `__tune.setState({ pathRadius: 40 })` 로
+   바로 바꿀 수 있다. 빌드에는 안 들어간다. */
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__tune = useTune;
+}
 
 /** 값이 없을 때 쓸 기본 (스테이지가 안 넘겨준 경우) */
 export const DEFAULT_OBJ: ObjTune = {

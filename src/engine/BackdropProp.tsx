@@ -99,7 +99,8 @@ export function BackdropProp({
    */
   const seeThrough = o.opacity < 1;
   const depthOnly = seeThrough
-    ? [geo.opaque, geo.glow, geo.glass].filter((g): g is THREE.BufferGeometry => !!g)
+    ? [geo.opaque, ...geo.glows.map((g) => g.geometry), geo.glass]
+      .filter((g): g is THREE.BufferGeometry => !!g)
     : [];
 
   return (
@@ -114,14 +115,20 @@ export function BackdropProp({
           </mesh>
         ))}
 
-        {/* 이 구조물 안 조명 블록을 진짜 광원으로 */}
-        <BlockLights
-          map={map}
-          scale={sc}
-          intensity={o.lightIntensity}
-          distance={o.lightDistance}
-          color={o.lightColor}
-        />
+        {/* 이 구조물 안 조명 블록을 진짜 광원으로.
+            **세기가 0 이면 아예 안 단다.** 세기 0 짜리 `pointLight` 는 화면에
+            아무것도 안 보태면서 셰이더의 광원 루프는 그대로 돈다 — 재 보니
+            전구 여섯 개가 2.5ms 였다. 1구역 구름 둘이 그렇게 달려 있었다.
+            빛나는 블록은 `glows` 메시가 이미 환하게 그린다(결정 ㉛). */}
+        {o.lightIntensity > 0 && (
+          <BlockLights
+            map={map}
+            scale={sc}
+            intensity={o.lightIntensity}
+            distance={o.lightDistance}
+            color={o.lightColor}
+          />
+        )}
 
         {geo.opaque && (
           <mesh geometry={geo.opaque}>
@@ -147,12 +154,13 @@ export function BackdropProp({
             )}
           </mesh>
         )}
-        {geo.glow && (
-          <mesh geometry={geo.glow}>
-            {/* 멀리 있는 불빛도 흐려지지만, 광원이라 형태보다는 덜 잠긴다 */}
+        {geo.glows.map(({ color, geometry }) => (
+          <mesh key={color} geometry={geometry}>
+            {/* 멀리 있는 불빛도 흐려지지만, 광원이라 형태보다는 덜 잠긴다.
+                색은 블록 제 색이다 (`GlowPart`) */}
             <meshStandardMaterial
               vertexColors
-              emissive="#ffffff"
+              emissive={color}
               emissiveIntensity={0.55}
               roughness={0.6}
               transparent={seeThrough}
@@ -160,7 +168,7 @@ export function BackdropProp({
               depthWrite={!seeThrough}
             />
           </mesh>
-        )}
+        ))}
         {geo.glass && (
           <mesh geometry={geo.glass} renderOrder={1}>
             <meshStandardMaterial

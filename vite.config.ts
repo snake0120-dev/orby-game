@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
@@ -22,6 +22,15 @@ function zoneEdits(): Plugin {
     apply: 'serve',
     configureServer(server) {
       for (const zone of EDIT_ZONES) server.middlewares.use(`/__${zone}-edits`, (req, res) => {
+        /* **읽기도 받는다.** 패널 값이 브라우저 저장소에만 있으면 창마다 다른
+           걸 본다 — 천우태가 보는 크롬, 미리보기 창, 확인용 헤드리스가 전부
+           남의 집이다. 파일을 한 군데 두고 셋 다 그걸 읽게 한다. */
+        if (req.method === 'GET') {
+          readFile(resolve(__dirname, `${zone}-edits.json`), 'utf8')
+            .then((body) => { res.setHeader('content-type', 'application/json'); res.end(body) })
+            .catch(() => { res.setHeader('content-type', 'application/json'); res.end('{}') })
+          return
+        }
         if (req.method !== 'POST') { res.statusCode = 405; res.end('POST 만 받습니다'); return }
         let body = ''
         req.on('data', (c) => { body += c })

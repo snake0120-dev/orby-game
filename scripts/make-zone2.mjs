@@ -37,7 +37,7 @@
  * 통로를 바닥·양옆·지붕 전부 유리로 둘렀다가 흰 홈통이 된 적이 있다.
  * 그래서 비치는 건 **한 겹만** 쓴다 — 통로는 지붕, 부스는 창.
  */
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import { rleEncode, rleDecode } from './lib/mapdata.mjs';
 import { xyzToIndex } from './lib/mcstructure.mjs';
 
@@ -61,6 +61,13 @@ const B = {
   glass: mc('white_stained_glass'),   // 유리 — 한 겹만
   sign:  mc('yellow_terracotta'),     // 노란 판 (안 빛난다)
   glow:  mc('glowstone'),             // 진짜 등 — 판 안에 한 칸만
+  /* 빛 띠 — **밝게 보이기만 하고 전구는 안 켠다** (`isLamp`, 결정 ㉛).
+     벽을 두르는 띠가 400칸인데 글로스톤으로 깔면 전구가 백 개 넘게 켜진다.
+
+     바닥 빛길(ochre)과 **다른 블록**인 게 중요하다. 엔진이 빛 종류마다 메시를
+     나누는데, 바닥 길만 아이 둘레에서 켜지고(`Stage.pathGlow`) 벽 띠는 늘
+     켜져 있어야 하기 때문이다. 색은 둘이 같아 보이게 맞춰 뒀다. */
+  strip: mc('pearlescent_froglight'),
 };
 
 /* ── 치수 (전부 ②에서 읽은 값) ───────────────────────────────── */
@@ -329,7 +336,155 @@ part('통로', '유리 통로 (가까운 쪽)', () => {
   }
 });
 
-/* ═══ 6. 합치기 · 걷는 칸 · 마커 ════════════════════════════
+/* ═══ 6. 실내 껍데기 — 벽 넷과 유리 천장 ═══════════════════
+   1인칭으로 보면 사방이 까만 허공이라 **공항 안이 아니라 우주에 뜬 섬**으로
+   보였다. 그래서 홀을 실제로 둘러막는다.
+
+   ── 벽은 판의 **가장자리를 따라간다**
+   판은 변마다 들쭉날쭉 깎여 있다(섹션 1). 네모 반듯한 벽을 두르면 깎아 둔
+   자리가 벽 밑의 구멍이 되거나, 메우느라 그 실루엣이 사라진다. 그래서
+   "바닥이 있고 옆 네 칸 중 하나가 비었으면 거기가 벽"으로 세운다 —
+   깎인 모양을 그대로 따라가고 틈도 안 생긴다.
+
+   통로 두 줄이 들어오는 자리(`OPEN`)만 비운다. 통로 바닥은 개체라서
+   `cells` 에 없으니 가장자리로 잡힌다 — 손으로 적어 줘야 한다.
+
+   ── 앞쪽 벽은 **아이소에서 잘린다**
+   카메라는 +x·+z 쪽 위에서 내려다본다. 그쪽 벽을 그대로 두면 방 안이 통째로
+   가린다. 엔진에 이미 그 장치가 있다(`voxelGeometry` 의 근경 절단) —
+   `Stage.cutaway: 3` 이면 **앞벽은 턱 세 칸만 남고** 뒷벽(x·z 작은 쪽)은
+   그대로 선다. 1인칭에서는 아무것도 안 자른다.
+
+   ── 천장은 **불투명한 판**이다
+   처음엔 유리로 지었다. 불투명하게 덮으면 방향광이 막혀 홀이 깜깜해지는데,
+   그림자를 드리우는 건 불투명 메시뿐이라 유리면 빛이 그대로 들어왔기 때문이다.
+   그런데 반투명 판이 화면을 꽉 채우니 **1인칭 프레임의 절반**을 먹었다
+   (30.6ms → 천장을 걷어내면 16.7ms). 지금은 불투명하게 짓고, 엔진이 천장만
+   따로 떼어 **그림자를 안 드리우게** 그린다(`BuiltGeometry.roof`).
+   아이소에서는 `Stage.ceiling` 으로 통째로 걷어낸다. */
+
+/* ── 손으로 놓은 블록을 **먼저** 읽는다 ─────────────────────
+   `zone2.html` 의 블록 붓으로 놓은 칸들. 패널이 `zone2-edits.json` 에 적어
+   두고 여기서 읽어 굽는다. 사람이 옮겨 적지 않는 이유는 간단하다 — 손으로
+   놓는 건 백 칸 단위라 옮겨 적을 수가 없다. 자리는 **절대 좌표**라 몇 번
+   적용해도 결과가 같다.
+
+   벽보다 먼저 읽는 이유는 아래 `floorAt` 때문이다 — **손으로 깐 바닥도 바닥**
+   이라 벽이 거기까지 따라가야 한다. 안 그러면 새로 깐 바닥이 벽 바깥에 남아
+   아이가 못 간다 (실제로 그렇게 열네 칸이 끊겼다). */
+const readHand = async (file, pick) => {
+  try { return pick(JSON.parse(await readFile(file, 'utf8'))) ?? []; }
+  catch { return []; }
+};
+const handBlocks = [];
+for (const h of [
+  /* ① **기본값으로 구워 둔 것** — `npm run zone2:bake` 가 옮겨 적는다.
+        코드로 지은 판·벽과 똑같이 취급한다. */
+  ...await readHand('scripts/zone2-blocks.json', (j) => j),
+  /* ② 아직 안 구운 편집 — 브라우저에서 방금 놓은 것들 */
+  ...await readHand('zone2-edits.json', (j) => j.손블록),
+]) {
+  const at3 = h.자리;
+  if (!Array.isArray(at3) || !inb(...at3)) continue;
+  handBlocks.push({ at: at3, block: h.지움 ? null : h.블록 });
+}
+
+/**
+ * 손으로 **깐** 바닥 — 벽이 여기까지 따라간다.
+ *
+ * **지운 칸은 안 본다.** 천우태는 바닥을 네 칸 폭으로 파내 유도 동선을 그린다.
+ * 그걸 "바닥이 끊겼다"로 읽으면 파낸 고랑마다 22칸짜리 벽이 솟는다 —
+ * 한 번 그렇게 해 보니 벽이 8,500칸에서 11,500칸이 됐다.
+ * 파는 건 방을 나누는 게 아니라 **바닥에 무늬를 넣는 일**이다.
+ */
+const handFloor = new Set();
+for (const h of handBlocks) {
+  if (h.at[1] === FLOOR && h.block !== null) handFloor.add(`${h.at[0]},${h.at[2]}`);
+}
+
+const CEIL = H - 1;                 // 천장 (35)
+const WTOP = CEIL - 1;              // 벽 꼭대기 (34)
+const DOOR = [59, 65];              // 관문으로 나가는 문 (z) — 관문 칸이 60~64
+/** 벽을 세우지 않는 자리 [x0, z0, x1, z1] — 통로가 들어온다 */
+const OPEN = [
+  [CA_X0, HZ0, CA_X1, HZ0 + 1],        // 먼 쪽 통로
+  [HX1 - 1, CB_Z0, HX1, CB_Z1],        // 가까운 쪽 통로
+];
+
+const floorAt = (x, z) =>
+  handFloor.has(`${x},${z}`) ||
+  (inb(x, FLOOR, z) && cells[xyzToIndex(x, FLOOR, z, SIZE)] >= 0);
+const openAt = (x, z) => OPEN.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
+
+/** 벽 한 줄의 단면. 창은 세로 기둥으로 일곱 칸마다 끊는다. */
+const wallAt = (x, y, z) => {
+  if (y <= Y + 1) return B.deep;                         // 13·14  걸레받이 (민트)
+  if (y === Y + 2) return B.rib;                         // 15     크림 띠
+  if (y <= Y + 4) return B.pale;                         // 16·17  창 아래 벽
+  if (y <= Y + 12) return (x + z) % 7 === 0 ? B.pale : B.glass;   // 18~25  창
+  if (y === Y + 13) return B.rib;                        // 26     인방
+  /* 27  빛 띠 — **일곱 칸 중 셋만** 켠다. 빛나는 블록은 전용 메시에서
+     흰색으로 타오르기 때문에(`VoxelGrid` 의 glow), 한 줄로 쭉 이으면
+     네온 띠처럼 쨍해서 민트 홀이 통째로 밀린다. 토막 내면 등으로 읽힌다. */
+  if (y === Y + 14) return (x + z) % 7 <= 2 ? B.strip : B.pale;
+  if (y === Y + 15) return B.rib;                        // 28     띠 아래턱
+  if (y < WTOP) return B.pale;                           // 29~33  윗벽
+  return B.cream;                                        // 34     코니스
+};
+
+/* ── 바깥은 어디인가 ───────────────────────────────────────
+   "바닥이 있고 옆이 비었으면 벽"으로만 세우면, 홀 **한가운데를 파낸 구멍**
+   둘레에도 벽이 22칸씩 솟는다. 실제로 심사대 1·2 사이를 파냈더니 그 구멍이
+   방으로 둘러싸였다 — 구멍은 방의 경계가 아니라 그냥 구멍이다.
+
+   그래서 바닥 없는 칸 중 **맵 가장자리에서 이어지는 것**만 바깥으로 친다.
+   안쪽 구멍은 어디서도 이어지지 않으니 벽이 안 선다. */
+const outside = new Uint8Array(W * D);
+{
+  const stack = [];
+  const open = (x, z) => {
+    if (x < 0 || z < 0 || x >= W || z >= D) return;
+    const i = z * W + x;
+    if (outside[i] || floorAt(x, z)) return;
+    outside[i] = 1;
+    stack.push(x, z);
+  };
+  for (let x = 0; x < W; x++) { open(x, 0); open(x, D - 1); }
+  for (let z = 0; z < D; z++) { open(0, z); open(W - 1, z); }
+  while (stack.length) {
+    const z = stack.pop(), x = stack.pop();
+    open(x + 1, z); open(x - 1, z); open(x, z + 1); open(x, z - 1);
+  }
+}
+/** 맵 밖이거나, 바깥과 이어진 빈 칸 */
+const isOut = (x, z) =>
+  x < 0 || z < 0 || x >= W || z >= D || outside[z * W + x] === 1;
+
+let wall = 0;
+for (let x = 0; x <= HX1; x++)
+  for (let z = HZ0; z <= HZ1; z++) {
+    if (!floorAt(x, z) || openAt(x, z)) continue;
+    if (!isOut(x + 1, z) && !isOut(x - 1, z) && !isOut(x, z + 1) && !isOut(x, z - 1)) continue;
+    // 관문 쪽은 문으로 뚫는다 — 아이가 걸어 나가는 자리다
+    const door = isOut(x - 1, z) && z >= DOOR[0] && z <= DOOR[1];
+    for (let y = Y; y <= WTOP; y++) {
+      if (door && y <= Y + 8) continue;                  // 13~21  문 구멍
+      set(x, y, z, door && y === Y + 9 ? B.cream : wallAt(x, y, z));
+      wall++;
+    }
+  }
+
+let roof = 0;
+for (let x = 0; x <= HX1; x++)
+  for (let z = HZ0; z <= HZ1; z++) {
+    /* 들보 한 줄(크림) · 그 옆에 빛줄 · 나머지는 흰 판.
+       천장 밑면은 빛을 못 받아 어두우므로, 열여섯 칸마다 넣는 빛줄이
+       조명 기구 노릇을 한다 — 없으면 잿빛 판이 머리 위를 짓누른다. */
+    set(x, CEIL, z, x % 8 === 0 ? B.rib : x % 16 === 1 ? B.strip : B.pale);
+    roof++;
+  }
+
+/* ═══ 7. 합치기 · 걷는 칸 · 마커 ════════════════════════════
    `cells` 는 **판만** 들어 있는 바탕이다. 여기에 개체를 찍어 합친 것이
    게임이 쓰는 맵(`immigration.json`)이고, 바탕과 개체를 따로 담은 것이
    패널이 쓰는 파일(`immigration-parts.json`)이다. */
@@ -346,6 +501,11 @@ for (const q of parts) {
         if (v >= 0) put(q.at[0] + x, q.at[1] + y, q.at[2] + z, v);
       }
 }
+
+/* 손 블록을 얹는다 (읽기는 섹션 6 앞에서 끝냈다).
+   순서는 **개체 다음, 양탄자 앞** — 브라우저 쪽(`src/zone2/parts.ts`)과 같은
+   순서여야 패널에서 본 것과 여정에서 보는 것이 같다. */
+for (const h of handBlocks) put(...h.at, h.block === null ? -1 : id(h.block));
 
 const WALK = id(M.walk);
 let walk = 0;
@@ -390,7 +550,13 @@ await writeFile('public/maps/immigration.json', JSON.stringify({
 /* 개체 자리의 지문. 패널에서 맞춘 값을 이 파일에 반영하고 나면, 브라우저에
    남아 있던 **그 편집이 또 한 번 더해져 두 배로 밀린다.** 지문이 달라지면
    저장해 둔 편집을 지우게 해서 그 사고를 막는다 (`editStore.ts`). */
-const stamp = parts.map((q) => `${q.id}@${q.at.join(',')}`).join('|')
+const stamp = [
+  ...parts.map((q) => `${q.id}@${q.at.join(',')}`),
+  /* 손 블록도 **지문에 넣는다.** 지문이 바뀌면 브라우저가 남겨 둔 편집을
+     버리는데(`editStore.ts`), 손 블록이 여기 들어 있어야 "구웠으니 이제
+     브라우저 쪽은 지워도 된다"가 자동으로 맞아떨어진다. */
+  ...handBlocks.map((h) => `${h.at.join(',')}=${h.block ?? '지움'}`),
+].join('|')
   .split('').reduce((h, ch) => ((h * 31 + ch.charCodeAt(0)) | 0), 7).toString(36);
 
 await writeFile('public/maps/immigration-parts.json', JSON.stringify({
@@ -405,6 +571,7 @@ await writeFile('public/maps/immigration-parts.json', JSON.stringify({
   gate: GATE_CELLS,
   base: rleEncode(Array.from(cells)),
   parts,
+  handBlocks,
 }));
 
 const filled = composed.reduce((n, v) => n + (v >= 0 ? 1 : 0), 0);
@@ -412,6 +579,12 @@ console.log(
   `입국 수속  ${W}×${H}×${D}  블록 ${filled.toLocaleString()}  ` +
   `팔레트 ${palette.length}종  걸을 수 있는 칸 ${walk.toLocaleString()}`,
 );
+console.log(`실내 껍데기  벽 ${wall.toLocaleString()}칸 · 천장 ${roof.toLocaleString()}칸`);
+if (handBlocks.length) {
+  const 지움 = handBlocks.filter((h) => h.block === null).length;
+  console.log(`손으로 놓은 블록 ${handBlocks.length - 지움}칸  지운 칸 ${지움}` +
+    `   (zone2-edits.json)`);
+}
 console.log(`개체 ${parts.length}개  ` +
   [...new Set(parts.map((q) => q.kind))].map((k) =>
     `${k} ${parts.filter((q) => q.kind === k).length}`).join(' · '));

@@ -6,7 +6,7 @@
  */
 import * as THREE from 'three';
 import { VOXEL } from '../theme';
-import { isWalkable, type StairShape, type VoxelMap } from './voxelMap';
+import { isSolid, isWalkable, type StairShape, type VoxelMap } from './voxelMap';
 
 /** 바깥벽을 자르고 남길 밑동 높이(블록) */
 const KEEP_BASE = 3;
@@ -46,7 +46,60 @@ const FACES: { n: THREE.Vector3; u: THREE.Vector3; v: THREE.Vector3 }[] = (
 /** 꼭짓점 네 개의 (u, v) 부호 — FACES 의 감기 순서와 같아야 한다 */
 const CORNERS: [number, number][] = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
 
-type Bucket = { pos: number[]; nrm: number[]; col: number[] };
+/**
+ * 면을 모으는 그릇 — **보통 배열이 아니라 타입 배열**이다.
+ *
+ * 2구역이면 꼭짓점이 십팔만 개다. 보통 배열에 `push` 로 쌓으면 그 숫자들이
+ * 전부 double 로 들어갔다가 `Float32BufferAttribute` 를 만들 때 한 번 더
+ * 통째로 옮겨진다 — 면 굽는 시간의 절반이 거기였다. 처음부터 Float32Array 에
+ * 자리로 적고, 모자라면 두 배로 늘린다.
+ */
+interface Bucket {
+  pos: Float32Array;
+  nrm: Float32Array;
+  col: Float32Array;
+  /** 넣은 꼭짓점 수 */
+  v: number;
+  /** 색 성분 수 — 3(RGB) 또는 4(RGBA, 높이 페이드가 켜졌을 때) */
+  cs: number;
+}
+
+/** 그릇 초기 크기 (꼭짓점) */
+const CHUNK = 8192;
+
+const newBucket = (cs: number): Bucket => ({
+  pos: new Float32Array(CHUNK * 3),
+  nrm: new Float32Array(CHUNK * 3),
+  col: new Float32Array(CHUNK * cs),
+  v: 0,
+  cs,
+});
+
+const grow = (b: Bucket) => {
+  if ((b.v + 1) * 3 <= b.pos.length) return;
+  const cap = b.pos.length;              // 지금 용량(= 꼭짓점 × 3)
+  const pos = new Float32Array(cap * 2); pos.set(b.pos); b.pos = pos;
+  const nrm = new Float32Array(cap * 2); nrm.set(b.nrm); b.nrm = nrm;
+  const col = new Float32Array(b.col.length * 2); col.set(b.col); b.col = col;
+};
+
+/** 꼭짓점 하나를 그릇에 적는다 */
+const vertex = (
+  b: Bucket,
+  px: number, py: number, pz: number,
+  nx: number, ny: number, nz: number,
+  r: number, g: number, bl: number,
+  a: number,
+) => {
+  grow(b);
+  const p = b.v * 3;
+  b.pos[p] = px; b.pos[p + 1] = py; b.pos[p + 2] = pz;
+  b.nrm[p] = nx; b.nrm[p + 1] = ny; b.nrm[p + 2] = nz;
+  const c = b.v * b.cs;
+  b.col[c] = r; b.col[c + 1] = g; b.col[c + 2] = bl;
+  if (b.cs === 4) b.col[c + 3] = a;
+  b.v++;
+};
 
 /**
  * 정점 색을 RGB 로 낼지 RGBA 로 낼지.
@@ -55,10 +108,34 @@ type Bucket = { pos: number[]; nrm: number[]; col: number[] };
  */
 type Alpha = ((y: number) => number) | null;
 
+/**
+ * 빛나는 블록 한 **색**의 메시.
+ *
+ * 색마다 따로 내는 이유: three 의 `emissive` 는 재질 하나에 **색 하나**다.
+ * 전부 한 덩어리로 묶고 흰 `emissive` 를 걸면 주황 전구든 파란 전구든
+ * 전부 하얗게 타오른다 — 실제로 그랬다. 색이 몇 가지 안 되므로
+ * (맵 하나에 보통 두셋) 그만큼만 나눠 그린다.
+ */
+export interface GlowPart {
+  /** 팔레트에 적힌 블록 이름 — 어떤 빛인지 구분할 때 쓴다 */
+  name: string;
+  /** 블록 본래 색 — 이게 그대로 `emissive` 가 된다 */
+  color: string;
+  geometry: THREE.BufferGeometry;
+}
+
 export interface BuiltGeometry {
   opaque: THREE.BufferGeometry | null;
   glass: THREE.BufferGeometry | null;
-  glow: THREE.BufferGeometry | null;
+  glows: GlowPart[];
+  /**
+   * **천장** (`Stage.ceiling` 위). 따로 내는 이유는 하나다 —
+   * 이것만 **그림자를 안 드리우게** 하려고. 천장이 방향광을 막으면 홀이
+   * 통째로 깜깜해진다. 아이소에서는 아예 안 만든다(가려서 못 보니까).
+   */
+  roof: THREE.BufferGeometry | null;
+  /** 칸마다 "이 y 부터는 안 그렸다" — 블록 붓의 조준선이 쓴다 (`drawnTop.ts`) */
+  cutAt: Int32Array;
 }
 
 /**
@@ -122,8 +199,12 @@ export function buildGeometry(
   paint?: PaintFn,
   /** 아래를 보는 면도 만들 것인가 — 1인칭처럼 **밑에서 올려다보는** 시점용 */
   keepDown = false,
+  /** 천장이 시작하는 높이 (`Stage.ceiling`). 이 위는 `roof` 로 따로 나간다. */
+  ceiling?: number,
+  /** 천장을 **아예 안 만들 것인가** — 위에서 내려다보는 아이소용 */
+  hideCeiling = false,
 ): BuiltGeometry {
-  return build(map, cutMin, tint, fade, paint, keepDown);
+  return build(map, cutMin, tint, fade, paint, keepDown, ceiling, hideCeiling);
 }
 
 function build(
@@ -133,6 +214,8 @@ function build(
   fade?: HeightFade,
   paint?: PaintFn,
   keepDown = false,
+  ceiling?: number,
+  hideCeiling = false,
 ) {
   const { w, h, d, cells, colors, translucent, emissive, stairs } = map;
   const keepBase = cutMin ?? KEEP_BASE;
@@ -150,23 +233,48 @@ function build(
     if (map.walkY[i] >= 0) { footY = map.walkY[i]; break; }
   }
 
-  // 카메라 쪽으로 나아가 봐서 걸을 수 있는 바닥을 만나면 실내, 맵 밖으로 나가면 바깥벽.
-  // 높이로 판별하면 카운터 위에 물건 하나 올렸을 때 카운터째 잘린다.
+  /**
+   * 카메라 쪽으로 한 칸씩 나아가 보고, 걸을 수 있는 바닥을 만나면 **실내**다.
+   * 높이로 판별하면 카운터 위에 물건 하나 올렸을 때 카운터째 잘린다.
+   *
+   * **바닥 판이 끊기면 거기서 멈춘다.** 안 멈추면, 방 밖으로 뻗어 나간 통로가
+   * 비스듬한 선에 걸려서 "저쪽에 걸을 수 있는 데가 있으니 실내"로 읽힌다 —
+   * 2구역에서 앞벽 스물다섯 칸이 안 잘리고 홀을 가렸다. 방에 속한 칸인지는
+   * 발 밑에 바닥 판이 있는지로 본다.
+   */
+  /** 발 밑에 바닥 판이 깔린 칸 — "이 방에 속한다"는 뜻 */
+  const onFloor = (x: number, z: number) => isSolid(map, x, footY - 1, z);
+
   const isOuterShell = (x: number, z: number): boolean => {
     for (let k = 1; ; k++) {
       const nx = x + k, nz = z + k;
       if (nx >= w || nz >= d) return true;
+      /* 바닥 판이 끊기면 거기서 멈춘다. **모서리를 비집고 지나가는 것도**
+         끊긴 것으로 친다 — 옆 두 칸까지 같이 보는 이유다. 안 그러면 방 밖으로
+         뻗어 나간 통로가 비스듬한 선에 걸려서 "저쪽에 걸을 데가 있으니 실내"로
+         읽힌다. 2구역에서 통로 어귀의 앞벽이 그래서 안 잘리고 홀을 가렸다. */
+      if (!onFloor(nx, nz) || !onFloor(nx - 1, nz) || !onFloor(nx, nz - 1)) return true;
       if (isWalkable(map, nx, nz)) return false;
     }
   };
 
-  const cutAt = new Int32Array(w * d).fill(h);
+  /* 천장은 **위에서 보는 눈에만** 안 보이면 된다 (`Stage.ceiling`).
+     아이소는 35° 에서 내려다보므로 천장을 덮으면 방 안이 통째로 가린다.
+     1인칭에서는 이 값을 안 넘겨서 천장이 그대로 있다 (`VoxelGrid`). */
+  const cutAt = new Int32Array(w * d).fill(hideCeiling ? Math.min(ceiling ?? h, h) : h);
   if (keepBase < h) {
     for (let x = 0; x < w; x++) {
       for (let z = 0; z < d; z++) {
+        /* **걸을 수 있는 칸은 벽이 아니다.** 이 줄이 없으면 2구역의 유리 통로가
+           통째로 잘린다 — 통로는 한 축으로만 뻗어서, 카메라 쪽으로 비스듬히
+           나아가 보면 통로를 벗어나 맵 밖으로 나가 버린다(= 바깥벽으로 읽힌다). */
+        if (isWalkable(map, x, z)) continue;
         if (!isOuterShell(x, z)) continue;
         for (let t = keepBase; t < h; t++) {
-          if (isWalkable(map, x - t, z - t)) { cutAt[z * w + x] = footY + t; break; }
+          if (isWalkable(map, x - t, z - t)) {
+            cutAt[z * w + x] = Math.min(cutAt[z * w + x], footY + t);
+            break;
+          }
         }
       }
     }
@@ -181,11 +289,29 @@ function build(
 
   /* ── 면 모으기 ─────────────────────────────────────────── */
 
-  const buf: Record<'opaque' | 'glass' | 'glow', Bucket> = {
-    opaque: { pos: [], nrm: [], col: [] },
-    glass: { pos: [], nrm: [], col: [] },
-    glow: { pos: [], nrm: [], col: [] },
+  /* 색 성분 수는 빌드 내내 같다 — 높이 페이드가 켜져 있으면 알파가 붙는다 */
+  const cs = fade && fade.strength > 0 ? 4 : 3;
+  const buf: Record<'opaque' | 'glass' | 'roof', Bucket> = {
+    opaque: newBucket(cs),
+    glass: newBucket(cs),
+    roof: newBucket(cs),
   };
+  /** 빛나는 블록은 **종류마다** 따로 모은다 (위 `GlowPart`) */
+  const glows = new Map<string, Bucket>();
+  const glowBucket = (name: string): Bucket => {
+    let b = glows.get(name);
+    if (!b) { b = newBucket(cs); glows.set(name, b); }
+    return b;
+  };
+  /** 천장 높이 — 이 위의 블록은 `roof` 주머니로 간다 */
+  const roofFrom = ceiling ?? Infinity;
+
+  /** 이 블록이 들어갈 주머니 */
+  const bucketFor = (v: number, y: number): Bucket =>
+    y >= roofFrom ? buf.roof
+      : translucent[v] ? buf.glass
+      : emissive[v] ? glowBucket(map.palette[v])
+      : buf.opaque;
   const c = new THREE.Color();
   // 칠하기 결과를 받는 그릇. 루프 밖에 한 번만 만든다.
   const pc = new THREE.Color();
@@ -208,6 +334,63 @@ function build(
         }
       : null;
 
+  /* ── 같은 줄로 이어지는 면은 **한 장으로 잇는다** ──────────
+     칸마다 네모 한 장씩 내면 바닥 75×100 이 7,500 장이 된다. 그런데 그중
+     대부분은 **색도 그늘(AO)도 똑같은 한 평면**이라, 이어 붙이면 줄당 한 장이다.
+
+     잇는 방향은 **z 하나뿐**이다(안쪽 고리라 이웃이 바로 옆에 있다). 그리고
+     세로(y)로는 **일부러 안 잇는다** — 높이 그라디언트(㉖)와 페이드가 꼭짓점
+     높이로 계산되는데, 세로로 이으면 그 사이 값이 직선으로 뭉개진다.
+     z 로만 이으면 네 꼭짓점의 높이가 그대로라 **결과가 한 픽셀도 안 바뀐다.**
+
+     이을 수 있는 조건: 같은 블록 · 네 꼭짓점의 AO 가 모두 같음 · z 가 이어짐.
+     z 를 보는 면(법선 ±z)은 칸마다 평면이 달라서 애초에 못 잇는다. */
+  interface Run { z0: number; z1: number; v: number; s: [number, number, number, number] }
+  const pend: (Run | null)[] = FACES.map(() => null);
+  const shade: [number, number, number, number] = [0, 0, 0, 0];
+
+  /** 모아 둔 한 줄을 네모 한 장으로 낸다 */
+  const flush = (fi: number, x: number, y: number) => {
+    const run = pend[fi];
+    if (!run) return;
+    pend[fi] = null;
+
+    const { n, u, v: fv } = FACES[fi];
+    const isGlass = translucent[run.v];
+    const target = bucketFor(run.v, y);
+    c.set(colors[run.v]!);
+    tint?.(c, y);
+    // 칠하기는 불투명 블록만 (유리·발광은 원래 색을 지킨다)
+    const painted = paint && (target === buf.opaque || target === buf.roof) ? paint : undefined;
+
+    const len = run.z1 - run.z0 + 1;
+    const cx = x * VOXEL, cy = y * VOXEL, cz = ((run.z0 + run.z1) / 2) * VOXEL;
+    const q: THREE.Vector3[] = [];
+    for (const [du, dv] of CORNERS) {
+      p.set(0, 0, 0)
+        .addScaledVector(u, du)
+        .addScaledVector(fv, dv)
+        .add(n)
+        .multiplyScalar(VOXEL / 2);
+      p.z *= len;              // 이은 만큼 늘인다 (법선이 ±z 면 len 은 늘 1이다)
+      p.x += cx; p.y += cy; p.z += cz;
+      q.push(p.clone());
+    }
+
+    for (const i of [0, 1, 2, 0, 2, 3]) {
+      // 유리는 AO 를 걸지 않는다 — 투명한 판에 구석 그늘이 생기면 때처럼 보인다
+      const k = isGlass ? 1 : run.s[i];
+      // 칠하기가 켜져 있으면 블록 색 대신 그 색을 쓴다. AO 는 그대로 곱한다 —
+      // 구석 그늘까지 사라지면 덩어리가 종이처럼 납작해진다.
+      const vc = painted ? (painted(pc, n.x, n.y, n.z, q[i].y), pc) : c;
+      vertex(
+        target, q[i].x, q[i].y, q[i].z, n.x, n.y, n.z,
+        vc.r * k, vc.g * k, vc.b * k,
+        alphaAt ? alphaAt(q[i].y) : 1,   // 꼭짓점 높이로
+      );
+    }
+  };
+
   for (let x = 0; x < w; x++) {
     for (let y = 0; y < h; y++) {
       for (let z = 0; z < d; z++) {
@@ -215,21 +398,20 @@ function build(
         if (!drawn(v) || cut(x, y, z)) continue;
 
         const isGlass = translucent[v];
-        const target = isGlass ? buf.glass : emissive[v] ? buf.glow : buf.opaque;
-        c.set(colors[v]!);
-        tint?.(c, y);
 
-        // 칠하기는 불투명 블록만 (유리·발광은 원래 색을 지킨다)
-        const painted = paint && target === buf.opaque ? paint : undefined;
-
-        // ㄴ자 계단은 큐브가 아니다. 상자 두 개로 따로 그린다.
+        // ㄴ자 계단은 큐브가 아니다. 상자 두 개로 따로 그린다 (이어 붙이지 않는다).
         const stair = stairs[v];
         if (stair) {
-          emitStair(target, c, x, y, z, stair, alphaAt, painted, pc);
+          const target = bucketFor(v, y);
+          c.set(colors[v]!);
+          tint?.(c, y);
+          emitStair(target, c, x, y, z, stair,
+            alphaAt, paint && (target === buf.opaque || target === buf.roof) ? paint : undefined, pc);
           continue;
         }
 
-        for (const { n, u, v: fv } of FACES) {
+        for (let fi = 0; fi < FACES.length; fi++) {
+          const { n, u, v: fv } = FACES[fi];
           /* **아래를 보는 면은 아예 안 만든다.**
              아이소 카메라는 고도 35.264°에서 내려다보는 게 고정이라
              (`IsoCamera.tsx`) −Y 면은 어떤 각도에서도 뒤통수를 보인다. 불투명
@@ -254,21 +436,9 @@ function build(
             if (nGlass === isGlass) continue;   // 같은 종류 — 이음매를 없앤다
           }
 
-          // 꼭짓점 네 개 + 꼭짓점별 AO
-          const q: THREE.Vector3[] = [];
-          const shade: number[] = [];
-          /* 칸의 월드 좌표는 네 꼭짓점이 같이 쓴다. 안쪽 고리에서 매번
-             `new Vector3` 를 만들면 6만 블록짜리 맵에서 수십만 개가 쓰레기가 된다. */
-          const cx = x * VOXEL, cy = y * VOXEL, cz = z * VOXEL;
-          for (const [du, dv] of CORNERS) {
-            p.set(0, 0, 0)
-              .addScaledVector(u, du)
-              .addScaledVector(fv, dv)
-              .add(n)
-              .multiplyScalar(VOXEL / 2);
-            p.x += cx; p.y += cy; p.z += cz;
-            q.push(p.clone());
-
+          // 꼭짓점 네 개의 AO. 자리는 줄을 다 모은 뒤에 한 번만 계산한다.
+          for (let k = 0; k < 4; k++) {
+            const du = CORNERS[k][0], dv = CORNERS[k][1];
             // 이 꼭짓점을 둘러싼 세 칸 (전부 면 바깥쪽, 즉 n 방향으로 한 칸 나가서)
             const s1 = blocks(nx + u.x * du, ny + u.y * du, nz + u.z * du);
             const s2 = blocks(nx + fv.x * dv, ny + fv.y * dv, nz + fv.z * dv);
@@ -278,33 +448,35 @@ function build(
               nz + u.z * du + fv.z * dv,
             );
             // 양 옆이 다 막히면 구석이라 제일 어둡다 (대각선 칸은 볼 필요도 없다)
-            shade.push(s1 && s2 ? AO[0] : AO[3 - (+s1 + +s2 + +cr)]);
+            shade[k] = s1 && s2 ? AO[0] : AO[3 - (+s1 + +s2 + +cr)];
           }
 
-          // 유리는 AO 를 걸지 않는다 — 투명한 판에 구석 그늘이 생기면 때처럼 보인다
-          for (const i of [0, 1, 2, 0, 2, 3]) {
-            const k = isGlass ? 1 : shade[i];
-            // 칠하기가 켜져 있으면 블록 색 대신 그 색을 쓴다. AO 는 그대로 곱한다 —
-            // 구석 그늘까지 사라지면 덩어리가 종이처럼 납작해진다.
-            const vc = painted ? (painted(pc, n.x, n.y, n.z, q[i].y), pc) : c;
-            target.pos.push(q[i].x, q[i].y, q[i].z);
-            target.nrm.push(n.x, n.y, n.z);
-            target.col.push(vc.r * k, vc.g * k, vc.b * k);
-            if (alphaAt) target.col.push(alphaAt(q[i].y));   // 꼭짓점 높이로
+          const run = pend[fi];
+          if (
+            n.z === 0 && run && run.z1 === z - 1 && run.v === v &&
+            run.s[0] === shade[0] && run.s[1] === shade[1] &&
+            run.s[2] === shade[2] && run.s[3] === shade[3]
+          ) {
+            run.z1 = z;                     // 앞 칸에 이어 붙인다
+            continue;
           }
+          flush(fi, x, y);
+          pend[fi] = { z0: z, z1: z, v, s: [shade[0], shade[1], shade[2], shade[3]] };
+          if (n.z !== 0) flush(fi, x, y);   // z 를 보는 면은 이을 수 없다
         }
       }
+      // 줄(x, y)이 끝나면 모아 둔 걸 전부 낸다
+      for (let fi = 0; fi < FACES.length; fi++) flush(fi, x, y);
     }
   }
 
   const toGeometry = (b: Bucket) => {
-    if (b.pos.length === 0) return null;
+    if (b.v === 0) return null;
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(b.nrm, 3));
+    g.setAttribute('position', new THREE.BufferAttribute(b.pos.subarray(0, b.v * 3), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(b.nrm.subarray(0, b.v * 3), 3));
     // 성분이 4개면 three 가 정점 알파를 켠다 (재질의 transparent 도 같이 켜야 한다)
-    const comps = b.col.length / (b.pos.length / 3) >= 4 ? 4 : 3;
-    g.setAttribute('color', new THREE.Float32BufferAttribute(b.col, comps));
+    g.setAttribute('color', new THREE.BufferAttribute(b.col.subarray(0, b.v * b.cs), b.cs));
     g.computeBoundingSphere();
     return g;
   };
@@ -312,7 +484,15 @@ function build(
   return {
     opaque: toGeometry(buf.opaque),
     glass: toGeometry(buf.glass),
-    glow: toGeometry(buf.glow),
+    glows: [...glows]
+      .map(([name, b]) => ({
+        name,
+        color: colors[map.palette.indexOf(name)] ?? '#ffffff',
+        geometry: toGeometry(b),
+      }))
+      .filter((g): g is GlowPart => g.geometry !== null),
+    roof: toGeometry(buf.roof),
+    cutAt,
   };
 }
 
@@ -389,10 +569,11 @@ function emitBox(
     const k = shade * (n[1] < 0 ? 0.78 : 1);
     for (const i of [0, 1, 2, 0, 2, 3]) {
       const vc = paint && pc ? (paint(pc, n[0], n[1], n[2], q[i][1]), pc) : color;
-      target.pos.push(q[i][0], q[i][1], q[i][2]);
-      target.nrm.push(n[0], n[1], n[2]);
-      target.col.push(vc.r * k, vc.g * k, vc.b * k);
-      if (alpha) target.col.push(alpha(q[i][1]));   // 꼭짓점 높이로
+      vertex(
+        target, q[i][0], q[i][1], q[i][2], n[0], n[1], n[2],
+        vc.r * k, vc.g * k, vc.b * k,
+        alpha ? alpha(q[i][1]) : 1,   // 꼭짓점 높이로
+      );
     }
   }
 }

@@ -80,7 +80,11 @@ export default function App() {
       <div className="stage">
         <Canvas
           shadows
-          dpr={[1, 2]}
+          /* 레티나에서 dpr 2 는 칠할 픽셀이 네 배다. 아이패드 프로 11인치면
+             4.0메가픽셀 → 1.5 로 묶어 2.2메가픽셀. 칠하는 양이 **44% 줄고**
+             복셀 덩어리라 눈으로는 거의 티가 안 난다 — 2구역 전용 화면이
+             진작부터 1.5 로 돌고 있었고 거기서 문제가 없었다. */
+          dpr={[1, 1.5]}
           gl={{ antialias: true }}
           style={{ position: 'absolute', inset: 0 }}
         >

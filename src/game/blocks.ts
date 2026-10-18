@@ -163,6 +163,16 @@ const OTHERS: Record<string, string> = {
   sea_lantern: '#DCF0EC',
   shroomlight: '#F3A05A',
   ochre_froglight: '#F6EFC0',
+  /**
+   * 벽·천장의 빛 띠.
+   *
+   * 색은 위 ochre 와 **일부러 똑같이** 맞췄다(실제 텍스처는 더 희읍스름하다).
+   * 블록을 가른 이유는 색이 아니라 **엔진이 빛 종류마다 메시를 나누기**
+   * 때문이다 — 한때 바닥 빛길만 아이 둘레에서 켜지게 하려고 갈랐다.
+   * 지금은 `Stage.glowNear` 가 **구역의 빛을 통째로** 걸므로 나눌 이유가
+   * 없어졌지만, 블록을 되돌리면 맵을 다시 구워야 해서 그대로 둔다.
+   */
+  pearlescent_froglight: '#F6EFC0',
 
   // 유리 계열 — 반투명이라 평균색이 밝다
   white_stained_glass: '#EDF0F0',
@@ -223,6 +233,17 @@ export function lookupBlock(rawName: string): BlockDef | null {
   if (EMPTY.has(name)) return {};
   return TABLE[name] ?? null;
 }
+
+/**
+ * **붓으로 놓을 수 있는 블록들** — 색이 있는 표의 항목 전부.
+ *
+ * 마커(시작·관문·물건 자리)는 빠진다. 색이 없어 화면에 안 그려지는데
+ * 목록에 두면 "놓았는데 아무것도 안 보인다"가 된다 — 자리 표시는 생성기가
+ * 할 일이라 붓으로 놓을 것도 아니다.
+ */
+export const PLACEABLE: { name: string; color: string }[] = Object.entries(TABLE)
+  .filter(([, d]) => !!d.color && !d.role)
+  .map(([name, d]) => ({ name: `minecraft:${name}`, color: d.color as string }));
 
 /** 표에 없는 블록에 임시로 쓸 색 */
 export const UNKNOWN_COLOR = '#B9B2A6';
