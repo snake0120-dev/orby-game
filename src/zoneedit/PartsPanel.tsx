@@ -198,6 +198,20 @@ function ViewSection({ useEdit }: { useEdit: EditStore }) {
             {t.fpv ? 'W A S D 앞뒤·옆걸음 · Q E 돌기' : 'W A S D 로 아이가 걷는다'}
           </div>
 
+          <div style={S.vrow}>
+            <span style={S.vlabel}>그림자</span>
+            <button
+              style={{ ...S.chip, ...(t.shadows ? S.chipOn : null) }}
+              onClick={() => setView({ shadows: !useTune.getState().shadows })}
+            >
+              {t.shadows ? '켜짐' : '꺼짐'}
+            </button>
+          </div>
+          <div style={S.hint}>
+            그림자 한 장을 만들려면 <b>맵 전체를 한 번 더 그린다</b> — 매 프레임에서
+            제일 큰 덩어리입니다. 전시 기기가 버거우면 여기서 먼저 꺼 보세요.
+          </div>
+
           <div style={S.vsep}>카메라 밀기 (화면 기준)</div>
           <div style={S.pad}>
             <button style={S.key} onClick={() => step('panX', -2)}>←</button>

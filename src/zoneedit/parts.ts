@@ -73,6 +73,8 @@ export interface ViewTune {
   panY?: number;
   /** 아이의 1인칭 눈으로 볼 것인가 */
   fpv?: boolean;
+  /** 그림자를 드리울 것인가 — 끄면 매 프레임에서 제일 큰 덩어리가 빠진다 (결정 ㉟) */
+  shadows?: boolean;
 }
 
 /* 풀어 둔 결과를 들고 있는다. 개체를 한 칸 밀 때마다 바탕 65만 칸과 개체 전부를

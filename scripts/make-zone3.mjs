@@ -402,21 +402,33 @@ const ROOF = H - 1;                                   // 53 — 제일 위 한 �
    섬을 덮으면 위에서 전광판·아치·좌석이 통째로 안 보인다. 그래서 **들보만** 건다 —
    1인칭에선 덮인 건물 속 같고, 위에서는 들보 사이로 다 보인다.
 
-   가까운 쪽도 같은 이유로 **허리 높이 유리 난간**만 둔다. 자르는 선이 윗층 기준
-   y 26 이라 섬에는 안 닿아서, 여기에 진짜 벽을 세우면 안 걷히고 섬을 가린다. */
+   가까운 쪽은 **유리 벽**이다. 자르는 선이 윗층 기준 y 26 이라 섬에는 안 닿아서
+   (= 안 걷힌다) 불투명한 벽을 세우면 섬 속이 통째로 가린다. 유리는 들여다보인다. */
 
-/** 허리 높이 난간 — 민트 한 단 · 유리 한 겹 · 크림 손잡이 */
-const rail = (x, y0, z) => {
-  set(x, y0, z, B.deep);
-  set(x, y0 + 1, z, B.glass);
-  set(x, y0 + 2, z, B.cream);
+/**
+ * 유리 벽 한 줄 — **불투명과 유리를 섞는다.** 섬·다리가 같은 단면을 써야 한 건물로 읽힌다.
+ *
+ *   민트 걸레받이 · 크림 창턱 · 창(일곱 칸마다 민트 창틀) · 크림 인방
+ *
+ * **가까운 쪽은 걸레받이를 한 칸만** 둔다. 카메라가 그쪽에서 내려다보는데 아래까지
+ * 막아 두면 속이 안 보인다. 먼 쪽은 두 칸이라 조금 더 단단하다.
+ */
+const glazedWall = (x, z, y0, top, isNear) => {
+  const sill = isNear ? y0 : y0 + 1;
+  for (let y = y0; y <= top; y++) {
+    if (y <= sill) { set(x, y, z, B.deep); continue; }
+    if (y === sill + 1) { set(x, y, z, B.cream); continue; }
+    if (y === top) { set(x, y, z, B.cream); continue; }
+    set(x, y, z, (x + z) % 7 === 0 ? B.deep : B.glass);
+  }
 };
 
 /** 섬 하나의 껍데기. `높이` 는 먼 쪽 벽, `들보` 는 그 위를 건너지르는 높이다. */
 const isleShell = (rect, y0, { 높이, 들보 }) => {
   const m = mask([rect]);
   for (const [x, z, isNear] of edgesOf(m)) {
-    if (isNear) { rail(x, y0, z); continue; }
+    /* 가까운 쪽도 지붕 바로 밑까지 올린다 — 다리와 같은 단면이다 */
+    if (isNear) { glazedWall(x, z, y0, 들보 - 1, true); continue; }
     const top = y0 + 높이 - 1;
     for (let y = y0; y <= top; y++) set(x, y, z, wallAt(x, y, z, y0, top));
   }
@@ -444,24 +456,12 @@ part('껍데기', '탑승구 섬 껍데기', () => isleShell(ISLE_GATE, L0 + 1, 
    복도가 아니라 터널로 읽혔다. 지붕이 y 23 이라 바로 옆 윗층 홀 바닥(y 22)과 한 칸
    차이인데, 평면에서 안 겹쳐서 섞여 보이지는 않는다 (`checkRegions` 가 지킨다).
 
-   벽은 **불투명과 유리를 섞는다.** 아래는 민트 걸레받이, 가운데는 창(일곱 칸마다
-   창틀), 꼭대기는 크림 인방. **가까운 쪽은 걸레받이를 한 칸만** 둬서 바닥까지
-   들여다보인다 — 카메라가 그쪽에서 내려다보는데 막아 두면 다리 속이 안 보인다. */
-const bridgeWall = (x, z, y0, top, isNear) => {
-  const sill = isNear ? y0 : y0 + 1;                 // 걸레받이 높이
-  for (let y = y0; y <= top; y++) {
-    if (y <= sill) { set(x, y, z, B.deep); continue; }
-    if (y === sill + 1) { set(x, y, z, B.cream); continue; }   // 크림 창턱
-    if (y === top) { set(x, y, z, B.cream); continue; }        // 크림 인방
-    set(x, y, z, (x + z) % 7 === 0 ? B.deep : B.glass);        // 창 — 일곱 칸마다 창틀
-  }
-};
-
+   벽은 아래 섬과 **같은 단면**(`glazedWall`)이다. 갈리면 한 건물로 안 읽힌다. */
 part('껍데기', '가운데 섬 둘 (다리)', () => {
   for (const [x0, z0, x1, z1] of [BRIDGE_A, BRIDGE_B]) {
     const y0 = L1 + 1, roof = L1 + 10;
     for (const [x, z, isNear] of edgesOf(mask([[x0, z0, x1, z1]])))
-      bridgeWall(x, z, y0, roof - 1, isNear);
+      glazedWall(x, z, y0, roof - 1, isNear);
     box(x0, roof, z0, x1, roof, z1, B.glass);
     for (let x = x0; x <= x1; x++)
       if (x % 10 === 0) box(x, roof, z0, x, roof, z1, B.cream);
