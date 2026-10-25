@@ -31,8 +31,9 @@ export const immigration: Stage = {
 
   /* 민트와 주황이 이 구역의 성격이라 채도를 안 누른다.
      1구역 값(0.47)을 그대로 쓰면 통째로 회색 홀이 된다. */
-  mainSaturation: 1,
-  mainBrightness: 1.02,
+  /* 둘 다 10%씩 올렸다 — 세워 놓고 보니 너무 어두웠다 (1 → 1.1 · 1.02 → 1.12) */
+  mainSaturation: 1.1,
+  mainBrightness: 1.12,
   /* 사인마다 등이 달려서, 1구역 세기(1.83)를 그대로 쓰면 바닥이 하얗게 씻긴다. */
   lightIntensity: 0.5,
   /* 판이 낮아서 기본 페이드(y3 까지)를 그대로 두면 **판 전체가** 반투명해져

@@ -320,7 +320,10 @@ const DEFAULTS = {
   panX: 0,
   panY: 0,
   fpv: false,
-  shadows: true,
+  /* **처음엔 꺼 둔다.** 그림자 한 장을 만들려면 맵 전체를 한 번 더 그려야 해서
+     매 프레임에서 제일 큰 덩어리다 (㉟ — 2구역에서 재 보면 프레임 시간이 절반).
+     2·3구역 둘 다 이 값으로 열린다. 보고 싶으면 패널에서 켠다. */
+  shadows: false,
   pathRadius: 7,
   glowRadius: 10,
   gateScale: 0.76,

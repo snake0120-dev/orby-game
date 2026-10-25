@@ -5,7 +5,7 @@ import { useGame } from '../game/store';
  * **오프닝 모션그래픽.**
  *
  * 천우태가 만든 450장짜리 PNG 연속 그림(`../시작 애니매이션`)을 움직이는 WebP 한
- * 장으로 구운 것이다 (`public/opening/start.webp` · 1600×1137 · 361장 × 66ms = 23.8초).
+ * 장으로 구운 것이다 (`public/opening/start.webp` · 2000×1422 · 361장 × 50ms = 18.1초).
  * 뒤쪽 89장은 **전부 같은 장**이라 빼고, 마지막 장을 브라우저가 붙들게 뒀다
  * (`loop=1` 이면 끝나고 멈춘다).
  *
@@ -23,14 +23,16 @@ import { useGame } from '../game/store';
  * 어긋나면 아직 돌고 있는 그림을 걷어내거나, 멈춘 그림을 한참 더 보고 있게 된다.
  */
 const FRAMES = 361;
-const FRAME_MS = 66;                 // 약 15fps — 처음 33ms(30fps)가 빨라서 두 배로 늘렸다
-const PLAY_MS = FRAMES * FRAME_MS;   // 23.8초
+const FRAME_MS = 50;                 // 20fps. 30fps 는 빨랐고 15fps 는 늘어져서 여기로 왔다
+const PLAY_MS = FRAMES * FRAME_MS;   // 18.1초
 /** 마지막 ✦ 를 잠깐 붙든다 — 끝나자마자 걷으면 급하게 읽힌다 */
 const HOLD_MS = 900;
 /** 걷히는 시간. 덮일 일은 없으니 넉넉하게 */
 const FADE_MS = 900;
 /** 눌러서 건너뛸 때는 빨리 걷는다 — 기다리는 사람은 이미 마음이 급하다 */
 const SKIP_MS = 220;
+/** 그림을 이만큼 기다려도 안 오면 포기하고 넘어간다 (17MB · 로컬이면 1초면 온다) */
+const LOAD_WAIT_MS = 12000;
 
 export function Opening() {
   const endOpening = useGame((s) => s.endOpening);
@@ -46,6 +48,18 @@ export function Opening() {
      12초 안에 한 번이라 눈에 안 띈다. 전시 기기에서 오프닝이 버벅이면 이 줄을
      뒤로 미루면 된다 (끝나기 몇 초 전으로). */
   useEffect(() => { void goToStage(0); }, [goToStage]);
+
+  /* **그림이 안 올라와도 화면이 덮인 채로 멈추면 안 된다.** 타이머를 `onLoad`
+     부터 세기 때문에, 파일이 깨졌거나 아직 다 안 구워졌으면 영영 안 걷힌다.
+     전시 기기에서 한 번 그러면 아무도 못 되살린다 — 넉넉히 기다렸다 걷어낸다. */
+  useEffect(() => {
+    if (ready || skipped) return;
+    const giveUp = window.setTimeout(() => {
+      console.warn('[ORBY] 오프닝 그림을 못 받았습니다 — 그냥 넘어갑니다');
+      endOpening();
+    }, LOAD_WAIT_MS);
+    return () => window.clearTimeout(giveUp);
+  }, [ready, skipped, endOpening]);
 
   useEffect(() => {
     if (!ready || skipped) return;
@@ -102,6 +116,10 @@ export function Opening() {
         src={`${import.meta.env.BASE_URL}opening/start.webp`}
         alt=""
         onLoad={() => setReady(true)}
+        onError={() => {
+          console.warn('[ORBY] 오프닝 그림을 못 읽었습니다 — 그냥 넘어갑니다');
+          endOpening();
+        }}
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
       />
     </div>

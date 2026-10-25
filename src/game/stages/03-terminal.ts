@@ -23,8 +23,9 @@ export const terminal: Stage = {
   // 유리 통로는 두 구역에 걸친 같은 물건이라, 다르면 걸어오다 아이가 커진다.
   characterScale: 1.7,
 
-  mainSaturation: 1,
-  mainBrightness: 1.1,
+  /* 둘 다 10%씩 올렸다 — 2구역과 같은 손질이다 (1 → 1.1 · 1.1 → 1.21) */
+  mainSaturation: 1.1,
+  mainBrightness: 1.21,
   lightIntensity: 0.5,
   fadeStrength: 0,
   /* 맵 상자가 바뀔 때마다 `IsoCamera` 공식으로 **풀어서** 넣는다 (눈대중 금지 — 결정 ㉓).
