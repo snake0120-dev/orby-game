@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGame } from '../game/store';
 import { useTune } from '../game/tuneStore';
-import { INPUT, walkStep } from './walkInput';
+import { INPUT, KEY, WALK_KEYS, walkStep } from './walkInput';
 
 /**
  * Q·E 로 도는 속도 (라디안/초).
@@ -12,7 +12,8 @@ import { INPUT, walkStep } from './walkInput';
 const TURN = 1.1;
 
 /**
- * **WASD 로 걷고, 1인칭에서는 Q·E 로 돈다.**
+ * **C D E F 로 걷고, 1인칭에서는 I·G 로 돈다** (`walkInput.ts` 의 `KEY`).
+ * 전시에서 쓸 **컨트롤러가 그 글자들을 보낸다** — 그래서 W A S D Q E 는 뗐다.
  *
  * 클릭해서 가는 길찾기는 그대로 둔다 — 전시 키오스크에는 키보드가 없고, 아이가
  * 배워야 할 조작이 하나여야 한다는 원칙이 그대로다. 키보드는 **만드는 사람이
@@ -38,14 +39,17 @@ export function WalkKeys() {
      * 안 움직였다. `code` 는 입력기·자판 배열과 무관하게 `KeyW` 로 온다.
      */
     const nameOf = (e: KeyboardEvent): string | null => {
-      const m = /^Key([WASDQE])$/.exec(e.code);
-      if (m) return m[1].toLowerCase();
-      // `code` 가 없는 환경(옛 브라우저·일부 가상 키보드)을 위한 대비책
-      const k = e.key?.toLowerCase();
-      return k && k.length === 1 && 'wasdqe'.includes(k) ? k : null;
+      const m = /^Key([A-Z])$/.exec(e.code);
+      const k = m ? m[1].toLowerCase() : e.key?.toLowerCase();
+      // `code` 가 없는 환경(옛 브라우저·일부 가상 키보드)을 위한 대비책이 뒷쪽이다
+      return k && k.length === 1 && WALK_KEYS.includes(k) ? k : null;
     };
+    /* 거들쇠(Shift·Ctrl·⌘·Alt)가 같이 눌린 건 **걷기가 아니다.** 개발용 단축키가
+       같은 글자를 Shift 와 함께 쓰고 있어서(`App.tsx` 의 C·G), 여기서 안 걸러내면
+       `preventDefault` 로 삼켜 버린다. 컨트롤러는 거들쇠를 안 보낸다. */
+    const mod = (e: KeyboardEvent) => e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
     const down = (e: KeyboardEvent) => {
-      if (typing(e.target)) return;
+      if (typing(e.target) || mod(e)) return;
       const k = nameOf(e);
       if (k) { INPUT.keys.add(k); e.preventDefault(); }
     };
@@ -78,8 +82,8 @@ export function WalkKeys() {
          순서대로 도는데 `Character` 가 여기보다 먼저라, 여기서 이어받으면
          아이가 이미 옛 시선 쪽으로 한 프레임 돈 뒤다 (3구역에서 1인칭이
          맵 밖을 보던 원인). 여기서는 돌리기만 한다. */
-      if (keys.has('q')) INPUT.heading += TURN * dt;
-      if (keys.has('e')) INPUT.heading -= TURN * dt;
+      if (keys.has(KEY.고개왼)) INPUT.heading += TURN * dt;
+      if (keys.has(KEY.고개오른)) INPUT.heading -= TURN * dt;
     }
 
     /* 아직 걷는 중이면 새 목적지를 주지 않는다. 매 프레임 길찾기를 돌리면

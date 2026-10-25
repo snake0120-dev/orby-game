@@ -49,7 +49,7 @@ export function PartsPanel(
         <div style={S.title}>개체 {file.parts.length}개</div>
         <div style={S.hint}>
           개체를 고른 뒤 방향키로 민다 — ←→ 가로 · ↑↓ 세로 · Shift+↑↓ 높이.
-          <br />아이는 <b>W A S D</b> 로 걷는다. 1인칭에서는 <b>Q E</b> 로 돈다.
+          <br />아이는 <b>C D E F</b> 로 걷는다 (앞·뒤·왼·오른). 1인칭에서는 <b>I G</b> 로 돈다.
           <br />닫기는 <b>2</b> 번.
         </div>
       </div>
@@ -195,7 +195,7 @@ function ViewSection({ useEdit }: { useEdit: EditStore }) {
             </button>
           </div>
           <div style={S.hint}>
-            {t.fpv ? 'W A S D 앞뒤·옆걸음 · Q E 돌기' : 'W A S D 로 아이가 걷는다'}
+            {t.fpv ? 'C 앞 · D 뒤 · E 왼 · F 오른 · I G 고개돌리기' : 'C D E F 로 아이가 걷는다'}
           </div>
 
           <div style={S.vrow}>

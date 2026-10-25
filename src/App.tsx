@@ -60,10 +60,13 @@ function useDevKeys() {
       /* 글자 단축키는 **자판 위치(`code`)로 읽는다.** `key` 로 읽으면 한글
          입력기가 켜져 있을 때 c 가 `ㅊ`, g 가 `ㅎ` 으로 들어와 안 먹는다.
          숫자 키는 입력기와 무관해서 위처럼 `key` 로 둬도 된다. */
-      // c: 현재 스테이지 미션 일괄 완료 (관문 개방 확인용)
-      if (e.code === 'KeyC') stage.missions.forEach((m) => complete(m.id));
-      // g: 맵 좌표 그리드 — 프롭 자리를 찍을 때 쓴다
-      if (e.code === 'KeyG') useDev.getState().toggleGrid();
+      /* **Shift 를 같이 눌러야 먹는다.** c·g 는 이제 걷기 키다 (앞으로·고개 오른쪽,
+         `walkInput.ts` 의 `KEY`) — 맨 글자로 두면 맵을 돌아다니다 미션이 전부
+         완료되고 격자가 켜진다. 걷기 쪽은 거들쇠가 눌린 키를 아예 안 받는다. */
+      // Shift+C: 현재 스테이지 미션 일괄 완료 (관문 개방 확인용)
+      if (e.shiftKey && e.code === 'KeyC') stage.missions.forEach((m) => complete(m.id));
+      // Shift+G: 맵 좌표 그리드 — 프롭 자리를 찍을 때 쓴다
+      if (e.shiftKey && e.code === 'KeyG') useDev.getState().toggleGrid();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
