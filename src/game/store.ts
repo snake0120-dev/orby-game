@@ -4,6 +4,7 @@ import {
   isGateCell, isWalkable, loadVoxelMap, prefetchVoxelMap, type VoxelMap,
 } from '../engine/voxelMap';
 import { DEV_STAGES, STAGES } from './stages';
+import { useTune } from './tuneStore';
 import { validateStage } from './validate';
 import type { MissionDef, PropDef, Stage } from './types';
 
@@ -84,6 +85,16 @@ interface GameState {
 export const isUnlocked = (m: MissionDef, done: string[]): boolean =>
   (m.requires ?? []).every((r) => done.includes(r));
 
+/**
+ * 구역이 열릴 때의 **보기 방식**을 건다 (지금은 1인칭인가 아닌가).
+ *
+ * **여정에서만** 부른다 — 구역 편집기(`zone2.html`·`zone3.html`)도 같은 `loadStage`
+ * 를 거치는데, 거기서까지 걸면 천우태가 패널에 저장해 둔 값을 덮어쓴다.
+ */
+function applyStageView(stage: Stage) {
+  useTune.getState().set({ fpv: stage.fpv ?? false });
+}
+
 /** 다음 구역이 **이어진 통로**로 붙어 있으면 그 맵을 미리 받아 둔다 */
 function prefetchNext(index: number) {
   const next = STAGES[index + 1];
@@ -161,6 +172,7 @@ export const useGame = create<GameState>((set, get) => ({
     }
     await get().loadStage(STAGES[index]);
     set({ stageIndex: index });
+    applyStageView(STAGES[index]);
     prefetchNext(index);
   },
 
@@ -198,6 +210,7 @@ export const useGame = create<GameState>((set, get) => ({
       done: [],
       message: stage.intro ?? null,
     });
+    applyStageView(stage);
     prefetchNext(index);
   },
 

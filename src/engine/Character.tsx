@@ -75,9 +75,12 @@ export function Character() {
     if (spawnedFor.current !== stage.id) {
       g.position.set(cx * VOXEL, cy * VOXEL, cz * VOXEL);
       /* 처음에는 **맵 한가운데를 보고 선다.** 방향이 0 이면 아이가 맵 바깥
-         허공을 보고 서 있는데, 1인칭으로 바꾸면 까만 화면만 나온다. */
-      const mid = mapCenter(map);
-      g.rotation.y = Math.atan2(mid[0] - g.position.x, mid[2] - g.position.z);
+         허공을 보고 서 있는데, 1인칭으로 바꾸면 까만 화면만 나온다.
+         한가운데가 안 맞는 구역은 `Stage.facing` 으로 볼 칸을 적어 준다. */
+      const look = stage.facing
+        ? [stage.facing[0] * VOXEL, 0, stage.facing[1] * VOXEL]
+        : mapCenter(map);
+      g.rotation.y = Math.atan2(look[0] - g.position.x, look[2] - g.position.z);
       spawnedFor.current = stage.id;
     }
 
