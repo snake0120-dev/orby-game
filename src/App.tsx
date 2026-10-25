@@ -60,8 +60,15 @@ function useDevKeys() {
       else if (n >= 1 && n <= STAGES.length) useGame.getState().goToStage(n - 1);
       /* **아무것도 안 적었으면 첫 구역을 바로 연다.** 작업 중에는 오프닝을
          건너뛰는데(㊺), 게임을 시작시키는 게 그 오프닝이라 아무도 안 부르면
-         "시작하기" 화면에 멈춰 있다. 전시용 빌드에서는 오프닝이 뜨니 상관없다. */
-      else if (!q) useGame.getState().goToStage(0);
+         "시작하기" 화면에 멈춰 있다. 전시용 빌드에서는 오프닝이 뜨니 상관없다.
+
+         **`?opening=0` 이면 안 연다.** 검사기가 그걸로 여는데, 여기서 부르는
+         `goToStage` 가 검사기가 모는 여정 중간에 끼어들어 2구역 관문 통과가
+         깨진다 — 오프닝에서 겪은 것과 **똑같은 구멍**이다 (`store.ts` 의
+         `SKIP_OPENING` 주석). */
+      else if (!q && new URLSearchParams(location.search).get('opening') !== '0') {
+        useGame.getState().goToStage(0);
+      }
     }
 
     const onKey = (e: KeyboardEvent) => {
