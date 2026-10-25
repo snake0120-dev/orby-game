@@ -28,8 +28,17 @@ export const KEY = {
   고개오른: 'g',
 } as const;
 
-/** `WalkKeys` 가 자판에서 골라낼 글자들 */
+/** `WalkKeys` 가 자판에서 골라낼 글자들 — **걷기만**이다 */
 export const WALK_KEYS = Object.values(KEY) as readonly string[];
+
+/**
+ * **처음(인트로)으로 되돌리는 키.**
+ *
+ * 걷기 키 목록에는 **안 넣는다** — 넣으면 `WalkKeys` 가 먼저 집어삼켜서
+ * 되돌리기가 안 먹는다. 여기 같이 적어 두는 건 컨트롤러 글자가 한자리에
+ * 모여 있어야 바꿀 때 안 흘리기 때문이다.
+ */
+export const RESTART_KEY = 'h';
 
 /** 화면 기준 네 방향 → (x, z). 아이소는 비스듬히 누워 있어 대각선이 "위"다. */
 const ISO: Record<string, [number, number]> = {

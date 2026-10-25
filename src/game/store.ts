@@ -76,6 +76,14 @@ interface GameState {
    * 2구역이 조용히 올라와서, 걷히는 순간 바로 걸을 수 있다.
    */
   opening: boolean;
+  /**
+   * 되돌릴 때마다 하나씩 오르는 번호.
+   *
+   * `App` 이 오프닝 덮개의 `key` 로 쓴다. 인트로가 **이미 떠 있는데** 또 되돌리면
+   * `opening` 은 계속 true 라 덮개가 안 갈리고, 그러면 밑에서 구역을 다시 올리는
+   * 일(`goToStage`)도 안 일어나서 걷어냈을 때 빈 화면이 남는다.
+   */
+  openingRun: number;
   endOpening: () => void;
   /** 프롭이 놓인 칸 (마인크래프트의 마커 위치) */
   propCell: (prop: PropDef) => Cell | null;
@@ -158,6 +166,9 @@ const SKIP_OPENING = !!PARAMS && (
   PARAMS.get('opening') === '0' ||
   (import.meta.env.DEV && PARAMS.get('opening') !== '1')
 );
+/** `?opening=0` — 검사기처럼 **오프닝이 아예 뜨면 안 되는** 자리. 되돌려도 안 뜬다. */
+const NEVER_OPENING = PARAMS?.get('opening') === '0';
+
 if (import.meta.env.DEV && SKIP_OPENING && PARAMS && !PARAMS.has('stage')) {
   console.info('[ORBY] 오프닝을 건너뛰었습니다 — 같이 보려면 주소에 ?opening=1');
 }
@@ -165,6 +176,7 @@ if (import.meta.env.DEV && SKIP_OPENING && PARAMS && !PARAMS.has('stage')) {
 export const useGame = create<GameState>((set, get) => ({
   phase: 'title',
   opening: !SKIP_OPENING,
+  openingRun: 0,
   stageIndex: 0,
   stage: STAGES[0],
   map: null,
@@ -357,9 +369,18 @@ export const useGame = create<GameState>((set, get) => ({
      그때 들어온 `intro` 는 아이가 화면을 보기도 전에 이미 사라져 있다. */
   endOpening: () => set((s) => ({ opening: false, message: s.stage.intro ?? null })),
 
-  /* 전시에서는 한 아이가 끝내면 다음 아이가 온다 — 오프닝부터 다시 돈다. */
+  /**
+   * **처음(인트로)으로 되돌린다** — `h` 키와 완주 화면의 "처음으로".
+   *
+   * 전시에서는 한 아이가 끝내면 다음 아이가 온다. 작업 중에는 오프닝을 건너뛰지만
+   * (`SKIP_OPENING`) **되돌릴 때는 일부러 되돌리는 것이라 오프닝부터 다시 돈다.**
+   * 검사기(`?opening=0`)에서만 안 뜬다.
+   */
   reset: () =>
-    set({ phase: 'title', opening: !SKIP_OPENING, map: null, done: [], path: [], moved: false, message: null }),
+    set((s) => ({
+      phase: 'title', opening: !NEVER_OPENING, openingRun: s.openingRun + 1,
+      map: null, done: [], path: [], moved: false, message: null,
+    })),
 }));
 
 if (import.meta.env.DEV) {

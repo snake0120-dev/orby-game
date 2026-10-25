@@ -7,6 +7,7 @@ import { Companion } from './ui/Companion';
 import { ErrorScreen, Finished, Loading, StageClear, Title } from './ui/Screens';
 import { Seam } from './ui/Seam';
 import { Opening } from './ui/Opening';
+import { RESTART_KEY } from './engine/walkInput';
 import { useGame } from './game/store';
 import { useDev } from './game/devStore';
 import { DevReadout } from './ui/DevReadout';
@@ -18,6 +19,28 @@ import { DEV_STAGES, STAGES } from './game/stages';
  * 개발용 단축키 + `?stage=N` 진입 파라미터.
  * 전시 빌드(production)에서는 붙지 않는다.
  */
+/**
+ * **`h` — 처음(인트로)으로.**
+ *
+ * 개발용 단축키(`useDevKeys`)와 따로 둔다. 저건 `import.meta.env.DEV` 에서만
+ * 도는데, 이건 **전시에서도 먹어야 한다** — 아이가 다 돌고 나면 다음 아이를 위해
+ * 되돌려야 하고, 컨트롤러가 그 글자를 보낸다.
+ *
+ * 거들쇠가 눌린 건 안 받는다 (걷기 쪽과 같은 규칙).
+ */
+function useRestartKey() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+      const el = e.target as HTMLInputElement | null;
+      if (el?.tagName === 'TEXTAREA' || el?.tagName === 'INPUT') return;
+      if (e.code === `Key${RESTART_KEY.toUpperCase()}`) useGame.getState().reset();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+}
+
 function useDevKeys() {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -35,6 +58,10 @@ function useDevKeys() {
       const byNo = STAGES.findIndex((s) => s.index === n);
       if (byNo >= 0) useGame.getState().goToStage(byNo);
       else if (n >= 1 && n <= STAGES.length) useGame.getState().goToStage(n - 1);
+      /* **아무것도 안 적었으면 첫 구역을 바로 연다.** 작업 중에는 오프닝을
+         건너뛰는데(㊺), 게임을 시작시키는 게 그 오프닝이라 아무도 안 부르면
+         "시작하기" 화면에 멈춰 있다. 전시용 빌드에서는 오프닝이 뜨니 상관없다. */
+      else if (!q) useGame.getState().goToStage(0);
     }
 
     const onKey = (e: KeyboardEvent) => {
@@ -76,10 +103,12 @@ function useDevKeys() {
 export default function App() {
   const phase = useGame((s) => s.phase);
   const opening = useGame((s) => s.opening);
+  const openingRun = useGame((s) => s.openingRun);
   /* 가로 무대는 창을 거의 다 쓴다 — 여백이 좁아 패널이 무대 왼쪽을 덮는다.
      그동안 HUD 를 오른쪽으로 밀어 가려지지 않게 한다. */
   const panelOpen = useTune((s) => s.open);
   useDevKeys();
+  useRestartKey();
 
   return (
     <>
@@ -127,7 +156,7 @@ export default function App() {
         {phase === 'finished' && <Finished />}
         {/* 오프닝 모션그래픽 — 제일 위에서 덮었다가 걷힌다.
             `opening` 으로 **붙였다 뗀다** — 다시 덮일 때 처음 상태로 돌아와야 한다. */}
-        {opening && <Opening />}
+        {opening && <Opening key={openingRun} />}
       </div>
 
       {/* 개발 도구는 무대 밖(여백 위)에 둔다 — 화면을 가리면 구도를 못 본다 */}

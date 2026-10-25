@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGame } from '../game/store';
+import { RESTART_KEY } from '../engine/walkInput';
 
 /**
  * **오프닝 모션그래픽.**
@@ -76,12 +77,17 @@ export function Opening() {
      열다섯 초를 안 버린다. */
   useEffect(() => {
     if (skipped) return;
-    const skip = () => {
+    /* `h` 만 뺀다 — 그건 **처음으로 되돌리는 키**다 (`App` 의 `useRestartKey`).
+       여기서 같이 받으면 되돌리려고 누른 손짓이 "건너뛰기"로 먹혀서 인트로가
+       0.2초 만에 걷힌다. */
+    const skip = (e: KeyboardEvent) => {
+      if (e.code === `Key${RESTART_KEY.toUpperCase()}`) return;
+      window.removeEventListener('keydown', skip);
       setSkipped(true);
       setFading(true);
       window.setTimeout(endOpening, SKIP_MS);
     };
-    window.addEventListener('keydown', skip, { once: true });
+    window.addEventListener('keydown', skip);
     return () => window.removeEventListener('keydown', skip);
   }, [skipped, endOpening]);
 
