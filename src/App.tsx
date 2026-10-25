@@ -28,8 +28,13 @@ function useDevKeys() {
     const byId = [...STAGES, ...DEV_STAGES].find((s) => s.id === q);
     if (byId) useGame.getState().loadStage(byId);
     else {
+      /* 숫자는 **구역 번호**(HUD 에 보이는 "2구역")로 먼저 찾는다. 여정에서 구역을
+         빼고 넣을 때마다 `?stage=2` 가 가리키는 데가 달라지면 손에 안 익는다.
+         번호로 못 찾으면 여정 자리로 친다. */
       const n = Number(q);
-      if (n >= 1 && n <= STAGES.length) useGame.getState().goToStage(n - 1);
+      const byNo = STAGES.findIndex((s) => s.index === n);
+      if (byNo >= 0) useGame.getState().goToStage(byNo);
+      else if (n >= 1 && n <= STAGES.length) useGame.getState().goToStage(n - 1);
     }
 
     const onKey = (e: KeyboardEvent) => {

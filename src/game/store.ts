@@ -142,14 +142,25 @@ function approachCells(map: VoxelMap, at: Cell, from: Cell): Cell[] {
 /**
  * 오프닝을 **건너뛸 자리**인가.
  *
- * 오프닝은 떠오르자마자 `goToStage(0)` 을 부른다. 그런데 `?stage=…` 로 특정 구역을
- * 열거나 검사기가 여정을 직접 몰 때는, 그 부름이 **중간에 끼어들어** 구역을 되돌린다
- * (검사기에서 2구역 관문 통과가 한 번 깨졌다). 그럴 땐 아예 안 띄운다.
+ * 세 가지다.
+ *
+ * ① `?stage=…` 로 특정 구역을 열 때. 오프닝은 떠오르자마자 `goToStage(0)` 을 부르는데,
+ *    그 부름이 **중간에 끼어들어** 구역을 되돌린다 (검사기에서 2구역 관문 통과가 한 번
+ *    깨졌다). ② `?opening=0` — 검사기가 이걸로 연다.
+ *
+ * ③ **개발 중에는 기본으로 건너뛴다.** 재 보니 맵은 새로고침 뒤 0.5초면 준비되는데
+ *    오프닝 때문에 **15.4초**를 기다린다. 하나 고칠 때마다 비행기를 끝까지 봐야 한다.
+ *    오프닝째로 보려면 `?opening=1`. **빌드한 전시용에서는 늘 재생된다.**
  */
-const SKIP_OPENING =
-  typeof location !== 'undefined' &&
-  (new URLSearchParams(location.search).has('stage') ||
-    new URLSearchParams(location.search).get('opening') === '0');
+const PARAMS = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+const SKIP_OPENING = !!PARAMS && (
+  PARAMS.has('stage') ||
+  PARAMS.get('opening') === '0' ||
+  (import.meta.env.DEV && PARAMS.get('opening') !== '1')
+);
+if (import.meta.env.DEV && SKIP_OPENING && PARAMS && !PARAMS.has('stage')) {
+  console.info('[ORBY] 오프닝을 건너뛰었습니다 — 같이 보려면 주소에 ?opening=1');
+}
 
 export const useGame = create<GameState>((set, get) => ({
   phase: 'title',

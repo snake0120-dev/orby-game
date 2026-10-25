@@ -25,11 +25,15 @@ const PLAY_MS = Math.round((FRAMES / FPS) * 1000);
 const HOLD_MS = 900;
 /** 걷히는 시간. 덮일 일은 없으니 넉넉하게 */
 const FADE_MS = 900;
+/** 눌러서 건너뛸 때는 빨리 걷는다 — 기다리는 사람은 이미 마음이 급하다 */
+const SKIP_MS = 220;
 
 export function Opening() {
   const endOpening = useGame((s) => s.endOpening);
   const goToStage = useGame((s) => s.goToStage);
   const [fading, setFading] = useState(false);
+  /** 눌러서 건너뛰었는가 — 걷는 속도가 달라진다 */
+  const [skipped, setSkipped] = useState(false);
   /** 그림이 다 받아졌는가 — 타이머는 **여기서부터** 센다. 안 그러면 받는 데 걸린
       만큼 뒤로 밀려서, 아직 돌고 있는 그림을 걷어내게 된다. */
   const [ready, setReady] = useState(false);
@@ -40,18 +44,41 @@ export function Opening() {
   useEffect(() => { void goToStage(0); }, [goToStage]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || skipped) return;
     let out = 0;
     const done = window.setTimeout(() => {
       setFading(true);
       out = window.setTimeout(endOpening, FADE_MS);
     }, PLAY_MS + HOLD_MS);
     return () => { window.clearTimeout(done); window.clearTimeout(out); };
-  }, [ready, endOpening]);
+  }, [ready, skipped, endOpening]);
+
+  /* **누르면 바로 건너뛴다** — 화면 아무 데나 누르거나 아무 키나.
+     전시에서 아이가 기다리다 톡 치는 것도 같은 손짓이고, 고치면서 새로고침할 때
+     열다섯 초를 안 버린다. */
+  useEffect(() => {
+    if (skipped) return;
+    const skip = () => {
+      setSkipped(true);
+      setFading(true);
+      window.setTimeout(endOpening, SKIP_MS);
+    };
+    window.addEventListener('keydown', skip, { once: true });
+    return () => window.removeEventListener('keydown', skip);
+  }, [skipped, endOpening]);
+
+  const onTap = () => {
+    if (skipped) return;
+    setSkipped(true);
+    setFading(true);
+    window.setTimeout(endOpening, SKIP_MS);
+  };
 
   return (
     <div
-      aria-hidden
+      role="button"
+      tabIndex={-1}
+      aria-label="오프닝 건너뛰기"
       style={{
         position: 'absolute',
         inset: 0,
@@ -59,9 +86,13 @@ export function Opening() {
         /* 받아지기 전에는 무대 바탕색으로 덮는다 — 게임이 먼저 보이면 안 된다 */
         background: 'var(--orby-paper)',
         opacity: fading ? 0 : 1,
-        transition: `opacity ${FADE_MS}ms ease`,
-        pointerEvents: 'none',
+        transition: `opacity ${skipped ? SKIP_MS : FADE_MS}ms ease`,
+        /* 클릭을 **여기서 받는다.** 통과시키면 밑에 있는 바닥 판정에 닿아서
+           오프닝을 건너뛰려고 누른 손짓이 아이를 걷게 만든다. */
+        pointerEvents: 'auto',
+        cursor: 'pointer',
       }}
+      onPointerDown={onTap}
     >
       <img
         src={`${import.meta.env.BASE_URL}opening/start.webp`}

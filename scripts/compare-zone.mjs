@@ -27,7 +27,10 @@ const ZONE = process.argv[2] ?? 'zone2';
 const Z = ZONES[ZONE];
 if (!Z) { console.error(`모르는 구역: ${ZONE}  (${Object.keys(ZONES).join(' / ')})`); process.exit(1); }
 
-const OUT = process.argv[3] ?? `public/compare-${ZONE}.png`;
+/* **`public/` 밖에 쓴다.** 여기 두면 전시용 빌드에 3MB 가 그대로 따라간다
+   (비교 그림 두 장이 묶음의 4분의 1이었다). 브라우저로 볼 게 아니라 파인더에서
+   열어 보는 그림이다. */
+const OUT = process.argv[3] ?? `compare/${ZONE}.png`;
 const GUIDE = Z.guide;
 const APP = `http://localhost:5180/${ZONE}.html`;
 const PORT = Z.port;

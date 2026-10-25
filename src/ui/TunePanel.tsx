@@ -122,6 +122,27 @@ export function TunePanel() {
 function MainSection({ t }: { t: TuneState }) {
   return (
     <>
+      <Section label="보기">
+        <div style={S.chips}>
+          <button
+            onClick={() => t.set({ shadows: !t.shadows })}
+            style={{ ...S.chip, ...(t.shadows ? S.chipOn : null) }}
+          >
+            그림자 {t.shadows ? '켜짐' : '꺼짐'}
+          </button>
+          <button
+            onClick={() => t.set({ fpv: !t.fpv })}
+            style={{ ...S.chip, ...(t.fpv ? S.chipOn : null) }}
+          >
+            {t.fpv ? '아이 눈으로 보는 중' : '아이 눈으로 보기'}
+          </button>
+        </div>
+        <p style={S.hint}>
+          그림자 한 장을 만들려면 <b>맵 전체를 한 번 더 그린다</b> — 매 프레임에서 제일
+          큰 덩어리입니다. 전시 기기가 버거우면 여기서 먼저 꺼 보세요.
+        </p>
+      </Section>
+
       <Section label="블록 색 템플릿">
         <div style={S.chips}>
           {COLOR_TEMPLATES.map((tpl) => (

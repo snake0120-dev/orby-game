@@ -56,14 +56,18 @@ export default defineConfig({
   plugins: [react(), zoneEdits()],
   build: {
     rollupOptions: {
+      /* **전시용 빌드에는 게임 한 쪽만 담는다.** 결과물은 스플래시 → 2구역 →
+         3구역이고, 구역 편집기(`zone2.html`·`zone3.html`)와 옛 대기화면
+         (`opening.html`)은 작업용이다.
+
+         **`npm run dev` 에서는 넷 다 그대로 열린다** — vite 개발 서버는 이 목록과
+         상관없이 폴더에 있는 html 을 다 띄운다. 여기 적힌 건 `npm run build` 가
+         담을 것뿐이다. 다시 담으려면 아래 줄들을 되살리면 된다. */
       input: {
-        // 입구가 **셋 다 따로다.** 한쪽을 손봐도 다른 쪽이 안 흔들린다.
         main: resolve(__dirname, 'index.html'),
-        opening: resolve(__dirname, 'opening.html'),
-        // 2구역만 보는 화면 — 미리보기 그림과 나란히 놓고 구도를 맞출 때 쓴다
-        zone2: resolve(__dirname, 'zone2.html'),
-        // 3구역(공항 터미널)만 보는 화면
-        zone3: resolve(__dirname, 'zone3.html'),
+        // opening: resolve(__dirname, 'opening.html'),
+        // zone2: resolve(__dirname, 'zone2.html'),
+        // zone3: resolve(__dirname, 'zone3.html'),
       },
     },
   },
