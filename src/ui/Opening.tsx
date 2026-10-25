@@ -5,7 +5,7 @@ import { useGame } from '../game/store';
  * **오프닝 모션그래픽.**
  *
  * 천우태가 만든 450장짜리 PNG 연속 그림(`../시작 애니매이션`)을 움직이는 WebP 한
- * 장으로 구운 것이다 (`public/opening/start.webp` · 1600×1137 · 361장 @30fps · 6.3MB).
+ * 장으로 구운 것이다 (`public/opening/start.webp` · 1600×1137 · 361장 × 66ms = 23.8초).
  * 뒤쪽 89장은 **전부 같은 장**이라 빼고, 마지막 장을 브라우저가 붙들게 뒀다
  * (`loop=1` 이면 끝나고 멈춘다).
  *
@@ -17,10 +17,14 @@ import { useGame } from '../game/store';
  * 이음매처럼 다른 색으로 덮을 필요 없이, **그냥 투명해지면** 이어진 한 장면이 된다.
  */
 
-/** 구운 장 수와 속도. 바꿀 땐 `scripts/make-opening-webp.py` 와 **같이** 고칠 것. */
+/**
+ * 구운 장 수와 **한 장이 머무는 시간**. `scripts/make-opening-webp.py` 와 **같은 값**
+ * 이어야 한다 — 속도는 파일에 구워져 있고, 여기서는 **언제 걷을지**를 셀 뿐이다.
+ * 어긋나면 아직 돌고 있는 그림을 걷어내거나, 멈춘 그림을 한참 더 보고 있게 된다.
+ */
 const FRAMES = 361;
-const FPS = 30;
-const PLAY_MS = Math.round((FRAMES / FPS) * 1000);
+const FRAME_MS = 66;                 // 약 15fps — 처음 33ms(30fps)가 빨라서 두 배로 늘렸다
+const PLAY_MS = FRAMES * FRAME_MS;   // 23.8초
 /** 마지막 ✦ 를 잠깐 붙든다 — 끝나자마자 걷으면 급하게 읽힌다 */
 const HOLD_MS = 900;
 /** 걷히는 시간. 덮일 일은 없으니 넉넉하게 */

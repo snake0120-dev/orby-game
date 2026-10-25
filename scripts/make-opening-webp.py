@@ -15,7 +15,7 @@
   재 보니 1200폭 5.7MB · 1600폭 8.1MB(q60) 였고, q72 로 구워 6.3MB 가 나왔다.
   더 또렷하게 하려면 폭만 올리면 된다 (2000폭이면 10MB 쯤).
 * **알파를 버린다.** 450장 전부 불투명이라(확인함) RGB 로 구우면 그만큼 싸진다.
-* 장 수나 속도를 바꾸면 `Opening.tsx` 의 `FRAMES`·`FPS` 도 **같이** 고칠 것.
+* 장 수나 속도를 바꾸면 `Opening.tsx` 의 `FRAMES`·`FRAME_MS` 도 **같이** 고칠 것.
 """
 from PIL import Image
 from pathlib import Path
@@ -24,7 +24,12 @@ import time
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent.parent / '시작 애니매이션'
 OUT = HERE.parent / 'public' / 'opening' / 'start.webp'
-W, N, FPS, Q = 1600, 361, 30, 72
+W, N, Q = 1600, 361, 72
+# 한 장이 화면에 머무는 시간(ms). **속도는 파일에 구워진다** — 다 굽고 나서
+# CSS 나 JS 로는 못 바꾼다. 처음엔 33ms(30fps)로 구웠는데 천우태가 보기에
+# 너무 빨라서 **두 배로 늘렸다**. 여기를 고치면 `src/ui/Opening.tsx` 의
+# `FRAME_MS` 도 **같이** 고쳐야 한다 — 거기서 언제 걷을지를 센다.
+FRAME_MS = 66
 H = round(W * 1775 / 2497)
 
 
@@ -41,9 +46,10 @@ def main() -> None:
     it = frames()
     first = next(it)
     first.save(OUT, 'WEBP', save_all=True, append_images=list(it),
-               duration=round(1000 / FPS), loop=1, quality=Q, method=4)
+               duration=FRAME_MS, loop=1, quality=Q, method=4)
     mb = OUT.stat().st_size / 1048576
-    print(f'{OUT}  {mb:.1f}MB  {W}x{H}  {N}장 @{FPS}fps = {N / FPS:.1f}s  ({time.time() - t0:.0f}s)')
+    print(f'{OUT}  {mb:.1f}MB  {W}x{H}  {N}장 × {FRAME_MS}ms = {N * FRAME_MS / 1000:.1f}s'
+          f'  ({1000 / FRAME_MS:.1f}fps, {time.time() - t0:.0f}s 걸림)')
 
 
 if __name__ == '__main__':
