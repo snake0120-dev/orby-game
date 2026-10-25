@@ -2,7 +2,9 @@
 // DEV에서 노출한 zustand 스토어를 직접 두드려 상태머신을 확인한다.
 import { spawn } from 'node:child_process';
 
-const URL_APP = 'http://localhost:5180/';
+/* `opening=0` — 오프닝 모션그래픽을 안 띄운다. 띄우면 그게 떠오르면서 부르는
+   `goToStage(0)` 이 검사기가 모는 여정 중간에 끼어든다 (`store.ts` 의 SKIP_OPENING). */
+const URL_APP = 'http://localhost:5180/?opening=0';
 const PORT = 9333;
 
 const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
@@ -90,7 +92,7 @@ const PROBE = `(async () => {
      상호작용이 아직 없으니 확인할 것은 셋뿐이다. 맵이 진짜로 걸어서
      통과 가능한지를 매 구역마다 실제로 걸어서 본다. */
   const journey = window.__orbyStages.journey;
-  ck('여정이 네 구역', journey.length === 4, journey.map(s => s.id));
+  ck('여정이 두 구역', journey.length === 2, journey.map(s => s.id));
 
   for (let i = 0; i < journey.length; i++) {
     const id = journey[i].id;

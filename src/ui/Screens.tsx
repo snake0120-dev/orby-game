@@ -114,7 +114,10 @@ export function Title() {
 export function StageClear() {
   const stage = useGame((s) => s.stage);
   const nextStage = useGame((s) => s.nextStage);
-  const last = stage.index >= STAGES.length;
+  const stageIndex = useGame((s) => s.stageIndex);
+  /* 마지막 구역인지는 **배열에서 몇 번째인가**로 본다. 손으로 적은 `stage.index`
+     (HUD 에 보이는 "2구역")와 여정 길이를 견주면, 구역을 빼거나 끼울 때마다 어긋난다. */
+  const last = stageIndex >= STAGES.length - 1;
 
   return (
     <div style={center}>

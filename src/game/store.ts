@@ -68,6 +68,14 @@ interface GameState {
   complete: (missionId: string) => void;
   say: (text: string | null) => void;
   reset: () => void;
+  /**
+   * 오프닝 모션그래픽이 아직 화면을 덮고 있는가 (`Opening`).
+   *
+   * 여정의 일부가 아니라 **그 위에 덮인 한 장**이다. 덮여 있는 동안 밑에서는
+   * 2구역이 조용히 올라와서, 걷히는 순간 바로 걸을 수 있다.
+   */
+  opening: boolean;
+  endOpening: () => void;
   /** 프롭이 놓인 칸 (마인크래프트의 마커 위치) */
   propCell: (prop: PropDef) => Cell | null;
 }
@@ -120,8 +128,21 @@ function approachCells(map: VoxelMap, at: Cell, from: Cell): Cell[] {
   );
 }
 
+/**
+ * 오프닝을 **건너뛸 자리**인가.
+ *
+ * 오프닝은 떠오르자마자 `goToStage(0)` 을 부른다. 그런데 `?stage=…` 로 특정 구역을
+ * 열거나 검사기가 여정을 직접 몰 때는, 그 부름이 **중간에 끼어들어** 구역을 되돌린다
+ * (검사기에서 2구역 관문 통과가 한 번 깨졌다). 그럴 땐 아예 안 띄운다.
+ */
+const SKIP_OPENING =
+  typeof location !== 'undefined' &&
+  (new URLSearchParams(location.search).has('stage') ||
+    new URLSearchParams(location.search).get('opening') === '0');
+
 export const useGame = create<GameState>((set, get) => ({
   phase: 'title',
+  opening: !SKIP_OPENING,
   stageIndex: 0,
   stage: STAGES[0],
   map: null,
@@ -308,8 +329,13 @@ export const useGame = create<GameState>((set, get) => ({
 
   say: (text) => set({ message: text }),
 
+  /* 대사는 **걷히는 순간**에 띄운다. 2구역을 오프닝 뒤에서 미리 올려 두기 때문에,
+     그때 들어온 `intro` 는 아이가 화면을 보기도 전에 이미 사라져 있다. */
+  endOpening: () => set((s) => ({ opening: false, message: s.stage.intro ?? null })),
+
+  /* 전시에서는 한 아이가 끝내면 다음 아이가 온다 — 오프닝부터 다시 돈다. */
   reset: () =>
-    set({ phase: 'title', map: null, done: [], path: [], moved: false, message: null }),
+    set({ phase: 'title', opening: !SKIP_OPENING, map: null, done: [], path: [], moved: false, message: null }),
 }));
 
 if (import.meta.env.DEV) {

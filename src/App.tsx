@@ -6,6 +6,7 @@ import { Hud } from './ui/Hud';
 import { Companion } from './ui/Companion';
 import { ErrorScreen, Finished, Loading, StageClear, Title } from './ui/Screens';
 import { Seam } from './ui/Seam';
+import { Opening } from './ui/Opening';
 import { useGame } from './game/store';
 import { useDev } from './game/devStore';
 import { DevReadout } from './ui/DevReadout';
@@ -66,6 +67,7 @@ function useDevKeys() {
 
 export default function App() {
   const phase = useGame((s) => s.phase);
+  const opening = useGame((s) => s.opening);
   /* 가로 무대는 창을 거의 다 쓴다 — 여백이 좁아 패널이 무대 왼쪽을 덮는다.
      그동안 HUD 를 오른쪽으로 밀어 가려지지 않게 한다. */
   const panelOpen = useTune((s) => s.open);
@@ -107,13 +109,17 @@ export default function App() {
           <Companion />
         </div>
 
-        {phase === 'title' && <Title />}
+        {/* 오프닝이 덮고 있는 동안에는 시작 화면을 안 띄운다 — 알아서 2구역으로 간다 */}
+        {phase === 'title' && !opening && <Title />}
         {phase === 'loading' && <Loading />}
         {phase === 'error' && <ErrorScreen />}
         {phase === 'stageClear' && <StageClear />}
         {/* 이어진 통로의 이음매 — 늘 떠 있고 투명도만 바뀐다 */}
         <Seam />
         {phase === 'finished' && <Finished />}
+        {/* 오프닝 모션그래픽 — 제일 위에서 덮었다가 걷힌다.
+            `opening` 으로 **붙였다 뗀다** — 다시 덮일 때 처음 상태로 돌아와야 한다. */}
+        {opening && <Opening />}
       </div>
 
       {/* 개발 도구는 무대 밖(여백 위)에 둔다 — 화면을 가리면 구도를 못 본다 */}
