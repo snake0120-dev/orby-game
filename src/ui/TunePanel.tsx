@@ -71,6 +71,17 @@ export function TunePanel() {
         ))}
       </div>
 
+      {/* 전체 채도 — **어떤 개체를 골라 놨든 늘 보인다.** 화면 톤에서 제일 먼저
+          만지는 값인데, 개체를 고르기 전에는 안 나와서 못 찾던 바다. */}
+      <Section label="전체 채도">
+        <Slider k="mainSaturation" label="채도" min={0} max={2} t={t} />
+        <p style={S.hint}>
+          맵 블록 <strong>전체</strong>의 채도. 1.00 이 마인크래프트에서 본 색 그대로이고
+          0 이면 흑백이다. 배경 구조물(구름·등대)은 제 채도를 따로 쥐고 있어 안 따라온다.
+          바를 끌면 <strong>맵 색을 다시 굽는다</strong> — 3구역에서 한 번에 35ms다.
+        </p>
+      </Section>
+
       {/* 칠하기는 메인 구조물과 배경 구조물 전부에 똑같이 붙는다 */}
       {(sel === 'main' || backdrops.some((b) => b.id === sel)) && <PaintSection t={t} id={sel} />}
 
@@ -162,8 +173,11 @@ function MainSection({ t }: { t: TuneState }) {
       </Section>
 
       <Section label="메인 구조물 색">
-        <Slider k="mainSaturation" label="채도" min={0} max={2} t={t} />
         <Slider k="mainBrightness" label="명도" min={0.4} max={1.8} t={t} />
+        <p style={S.hint}>
+          채도는 <strong>맨 위 전체 채도</strong> 바에서 만진다 — 같은 값이라 여기 한 번
+          더 두면 둘 중 어느 게 진짜인지 헷갈린다.
+        </p>
       </Section>
 
       <Section label="하단 페이드">

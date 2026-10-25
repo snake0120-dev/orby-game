@@ -168,6 +168,25 @@ function ViewSection({ useEdit }: { useEdit: EditStore }) {
       <button style={S.key} onClick={() => step(k, by)}>＋</button>
     </div>
   );
+  /**
+   * 끌어서 맞추는 **바.** ＋/− 로는 채도처럼 "어디쯤인지 눈으로 찾는" 값을 못 맞춘다.
+   *
+   * 끄는 동안 값이 바로 꽂히므로 맵 색이 따라 구워진다 — 3구역에서 한 번에 35ms다.
+   * 초당 스물몇 번이라 끌면서 봐도 되는 값이지만, 그래서 칸은 0.05 로 둔다
+   * (0.01 이면 같은 거리를 끄는 데 다시 굽기가 다섯 배 들어간다).
+   */
+  const bar = (
+    k: keyof typeof view, label: string, cur: number, min: number, max: number,
+  ) => (
+    <div style={S.vrow} key={k}>
+      <span style={S.vlabel}>{label}</span>
+      <input
+        type="range" min={min} max={max} step={0.05} value={cur} style={S.bar}
+        onChange={(ev) => setView({ [k]: Number(ev.target.value) })}
+      />
+      <span style={S.vval}>{cur.toFixed(2)}</span>
+    </div>
+  );
   const hue = (k: keyof typeof view, label: string, cur: string) => (
     <div style={S.vrow} key={k}>
       <span style={S.vlabel}>{label}</span>
@@ -212,6 +231,14 @@ function ViewSection({ useEdit }: { useEdit: EditStore }) {
           <div style={S.hint}>
             그림자 한 장을 만들려면 <b>맵 전체를 한 번 더 그린다</b> — 매 프레임에서
             제일 큰 덩어리입니다. 전시 기기가 버거우면 여기서 먼저 꺼 보세요.
+          </div>
+
+          <div style={S.vsep}>전체 채도</div>
+          {bar('mainSaturation', '채도', t.mainSaturation, 0, 2)}
+          <div style={S.hint}>
+            맵 블록 <b>전체</b>의 채도입니다 — 1.00 이 마인크래프트에서 본 색 그대로,
+            0 이면 흑백입니다. 창밖 구름은 제 값(0.10)을 따로 쥐고 있어 안 따라옵니다.
+            <br />맞춘 숫자를 <b>파일로 저장</b> 하면 제가 읽어 스테이지 파일에 박습니다.
           </div>
 
           <div style={S.vsep}>카메라 밀기 (화면 기준)</div>
@@ -288,6 +315,8 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 'calc(var(--u) * 0.95)',
   },
   vlabel: { flex: 1, opacity: 0.7 },
+  /* 바는 글자칸보다 넓게 — 좁으면 한 픽셀이 0.1 이라 손으로 맞춰지지 않는다 */
+  bar: { flex: '2 1 0', minWidth: 0, accentColor: '#e39f44' },
   vval: { minWidth: 'calc(var(--u) * 3.4)', textAlign: 'right' },
   vsep: { opacity: 0.45, marginTop: 'calc(var(--u) * 0.5)' },
   swatch: {
