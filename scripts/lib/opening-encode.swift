@@ -1,15 +1,19 @@
 // PNG 연속 그림 → H.264 mp4. 애플 하드웨어 인코더를 쓴다 (내려받을 것 없음).
-// 쓰기: encode <원본폴더> <장수> <폭> <높이> <초당장수> <비트레이트Mbps> <결과.mp4>
+// 쓰기: encode <원본폴더> <첫장> <장수> <폭> <높이> <초당장수> <비트레이트Mbps> <결과.mp4>
+//
+// `첫장` 이 있는 이유 — 오프닝을 **두 토막**으로 굽는다 (결정 ㊽).
+// 15~74번은 끝없이 도는 루프, 75~360번은 누르면 재생되는 뒷부분이다.
 import AVFoundation
 import AppKit
 import CoreVideo
 
 let a = CommandLine.arguments
-guard a.count == 8 else { fputs("인자 수가 맞지 않습니다\n", stderr); exit(2) }
+guard a.count == 9 else { fputs("인자 수가 맞지 않습니다\n", stderr); exit(2) }
 let src = URL(fileURLWithPath: a[1])
-let n = Int(a[2])!, W = Int(a[3])!, H = Int(a[4])!, fps = Int(a[5])!
-let mbps = Double(a[6])!
-let out = URL(fileURLWithPath: a[7])
+let first = Int(a[2])!
+let n = Int(a[3])!, W = Int(a[4])!, H = Int(a[5])!, fps = Int(a[6])!
+let mbps = Double(a[7])!
+let out = URL(fileURLWithPath: a[8])
 try? FileManager.default.removeItem(at: out)
 
 let writer = try AVAssetWriter(outputURL: out, fileType: .mp4)
@@ -52,7 +56,7 @@ let done = DispatchSemaphore(value: 0)
 input.requestMediaDataWhenReady(on: q) {
   while input.isReadyForMoreMediaData {
     if i >= n { input.markAsFinished(); done.signal(); return }
-    let f = src.appendingPathComponent(String(format: "anime%03d.png", i))
+    let f = src.appendingPathComponent(String(format: "anime%03d.png", first + i))
     guard let img = NSImage(contentsOf: f),
           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
       fputs("못 읽음: \(f.path)\n", stderr); exit(1)
