@@ -59,6 +59,13 @@ const REVIVE_MS = 4000;
 const STALLED_MS = 8000;
 /** 기다리는 중에 이만큼이 되도록 한 장도 못 돌면 정지 그림으로 바꾼다 */
 const NEVER_STARTED_MS = 20000;
+/** 2구역이 아직 안 올라왔으면 **이만큼까지 기다렸다** 걷는다 — 준비 전에 걷으면
+ *  "시작하기" 버튼이 뜨고, 아이가 그걸 또 눌러야 한다 (천우태가 잡은 것) */
+const READY_WAIT_MS = 5000;
+/** 예비 그림(WebP)의 길이 + 마지막 붙듦. 거기선 끝을 알 길이 없어 시계를 쓴다 */
+const WEBP_MS = 18050 + HOLD_MS;
+/** 예비 그림조차 안 올라오면 이만큼 뒤에 넘어간다 */
+const WEBP_GIVEUP_MS = 30000;
 
 /** 주소에 `?diag=1` 을 붙이면 **화면 위에** 상태를 띄운다 — 아이패드에는 개발자
  *  도구가 없어서, 거기서 무슨 일이 벌어지는지 볼 방법이 이것뿐이다. */
@@ -87,6 +94,8 @@ export function Opening() {
   const [fallback, setFallback] = useState(false);
   /** 아이패드가 **저전력 모드**면 소리를 껐어도 저절로 안 튼다. 그때만 뜨는 안내 */
   const [blocked, setBlocked] = useState(false);
+  /** 예비 그림이 올라왔는가 — 거기서부터 시계를 센다 */
+  const [webpReady, setWebpReady] = useState(false);
   const [diag, setDiag] = useState('');
 
   /** 끝내는 길은 여럿인데 **한 번만** 끝나야 한다 */
@@ -98,15 +107,6 @@ export function Opening() {
   /** 지킴이가 이벤트 핸들러 바깥에서 봐야 하는 값들 */
   const state = useRef({ armed: false, rest: false, laps: 0, stut: 0, revived: 0 });
 
-  /** 덮개를 걷는다 */
-  const close = useCallback(() => {
-    if (closing.current) return;
-    closing.current = true;
-    wakeScene();
-    setFading(true);
-    window.setTimeout(endOpening, FADE_MS);
-  }, [endOpening, wakeScene]);
-
   /** 밑에서 2구역을 올린다. 루프가 **실제로 돌기 시작한 뒤**에 부른다 —
    *  맵을 받고 면을 굽는 일이 영상이 뜨는 순간과 겹치면 거기서 한 번 걸린다. */
   const kick = useCallback(() => {
@@ -114,6 +114,32 @@ export function Opening() {
     kicked.current = true;
     void goToStage(0);
   }, [goToStage]);
+
+  /**
+   * 덮개를 걷는다.
+   *
+   * **2구역이 준비된 뒤에 걷는다.** 준비 전에 걷으면 `phase` 가 아직 `title` 이라
+   * `App` 이 **"시작하기" 버튼이 있는 시작 화면**을 띄운다 — 아이가 스플래시를 다
+   * 보고도 버튼을 한 번 더 눌러야 한다. 전시에서 그러면 안 된다.
+   * 그동안은 **마지막 장을 그대로 붙들고** 있는다 (빈 하늘을 보여주지 않는다).
+   */
+  const close = useCallback(() => {
+    if (closing.current) return;
+    closing.current = true;
+    kick();                       // 아직 안 시켰으면 지금이라도
+    const since = performance.now();
+    const begin = () => {
+      const ready = !!useGame.getState().map;
+      if (!ready && performance.now() - since < READY_WAIT_MS) {
+        window.setTimeout(begin, 100);
+        return;
+      }
+      wakeScene();
+      setFading(true);
+      window.setTimeout(endOpening, FADE_MS);
+    };
+    begin();
+  }, [endOpening, wakeScene, kick]);
 
   /* 기다리는 동안 **뒷부분을 받아 두고 첫 장까지 풀어 둔다.** iOS 는 `play()` 를
      한 번도 안 부른 영상의 첫 장을 안 풀어 두는 일이 있는데, 그러면 바꿔치는
@@ -125,6 +151,15 @@ export function Opening() {
     primed.current = true;
     v.play().then(() => { v.pause(); v.currentTime = 0; }).catch(() => { /* 못 해도 그만이다 */ });
   }, []);
+
+  /* **영상이 끝내 안 돌아도 2구역은 올려 둬야 한다.** 올리는 일을 `playing` 에만
+     매달아 두면, 영상을 못 읽었을 때(예비 그림으로 넘어갔을 때) 한 번도 안 불린다.
+     그러면 스플래시를 다 보고 걷히는 순간 **"시작하기" 버튼**이 뜬다 — 전시용
+     빌드에는 이걸 대신 불러 주는 개발용 코드도 없다. */
+  useEffect(() => {
+    const t = window.setTimeout(kick, 4000);
+    return () => window.clearTimeout(t);
+  }, [kick]);
 
   /** 루프가 돌기 시작했다 */
   const onLoopPlaying = useCallback(() => {
@@ -205,6 +240,17 @@ export function Opening() {
     console.warn('[ORBY] 오프닝 영상을 못 읽었습니다 — 옛 그림으로 돌아갑니다');
     setFallback(true);
   }, []);
+
+  /* **예비 그림도 혼자 넘어간다.** 영상을 못 읽어 옛 WebP 로 돌아갔을 때,
+     거기에는 **기다리는 상태가 없다** — WebP 는 창문 열리는 데까지 통째로 한 번
+     돌고 멈춘다. 그래서 ㊽ 의 "안 눌렀으면 안 넘어간다" 규칙이 여기엔 안 맞는다.
+     스플래시를 다 보여 준 뒤엔 **혼자 2구역으로 간다** (천우태가 잡은 것).
+     끝을 알 길이 없어서 여기서만 시계를 쓴다. */
+  useEffect(() => {
+    if (!fallback) return;
+    const t = window.setTimeout(close, webpReady ? WEBP_MS : WEBP_GIVEUP_MS);
+    return () => window.clearTimeout(t);
+  }, [fallback, webpReady, close]);
 
   /* **멈춰 선 채로 끝나지 않게 지킨다.**
      기다리는 중과 뒷부분 재생 중의 처리가 **다르다** — 아무도 안 눌렀는데 혼자
@@ -293,7 +339,12 @@ export function Opening() {
       onPointerDown={press}
     >
       {fallback ? (
-        <img src={`${import.meta.env.BASE_URL}opening/start.webp`} alt="" style={fill} />
+        <img
+          src={`${import.meta.env.BASE_URL}opening/start.webp`}
+          alt=""
+          onLoad={() => setWebpReady(true)}
+          style={fill}
+        />
       ) : (
         <>
           {/*
