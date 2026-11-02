@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:pages": "ORBY_BASE=/orby-game/ npm run build",
+    "deploy": "node scripts/deploy-pages.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "verify": "node scripts/verify.mjs",

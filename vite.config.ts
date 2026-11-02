@@ -52,7 +52,21 @@ function zoneEdits(): Plugin {
 }
 
 // https://vite.dev/config/
+/**
+ * 깃허브 페이지는 **주소 뒤에 저장소 이름이 붙는다** —
+ * `snake0120-dev.github.io/orby-game/` 이다. 자산을 `/maps/...` 로 찾으면
+ * 거기엔 아무것도 없다(그건 `snake0120-dev.github.io/maps/...` 를 본다).
+ *
+ * 그래서 퍼블리시용 빌드만 앞가지를 갈아 끼운다 — `ORBY_BASE` 를 주고 빌드하면
+ * 그 값이 `import.meta.env.BASE_URL` 로 들어가고, 맵·오프닝 그림·글꼴을 읽는
+ * 코드가 전부 그걸 앞에 붙여 쓰게 되어 있다(결정 ㊳ 식 한 군데 규칙).
+ *
+ * **`npm run dev` 와 평소 `npm run build` 는 안 바뀐다** — 환경변수가 없으면 `/` 다.
+ */
+const base = process.env.ORBY_BASE ?? '/'
+
 export default defineConfig({
+  base,
   plugins: [react(), zoneEdits()],
   build: {
     rollupOptions: {

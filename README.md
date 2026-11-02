@@ -14,14 +14,39 @@ npm run dev              # http://localhost:5173
 npm run test             # NBT/좌표/RLE 단위 테스트
 npm run verify           # 게임 루프 검증 (dev 서버 필요)
 npm run build            # 전시용 정적 빌드 → dist/
+npm run build:pages      # 깃허브 페이지 주소용 빌드 (앞가지 /orby-game/)
 
 npm run map:import maps/파일.mcworld    # 마인크래프트 월드 → 게임 맵
 npm run map:test                        # 합성 테스트 맵 재생성
 ```
 
+조작 (전시 빌드에도 있다 — 컨트롤러에 맞춰 놓은 배치다):
+`C` 앞 · `D` 뒤 · `E` 왼 · `F` 오른 · `I` 고개 왼 · `G` 고개 오른 · `H` 처음으로
+
 개발 편의 (전부 **DEV 전용** — 전시 빌드엔 없다):
-`G` 보행영역 오버레이 · `1`~`6` 구역 점프 · `C` 미션 일괄완료 · `?stage=N`
+`1` 패널 열기 · `2` 패널 닫기 · `Shift`+숫자 구역 점프 ·
+`Shift`+`C` 미션 일괄완료 · `Shift`+`G` 보행영역 오버레이 · `?stage=N`
 콘솔: `__orby` (스토어) · `__orbyCheck()` (맵 검사)
+
+## 웹에 올리기
+
+<https://snake0120-dev.github.io/orby-game/>
+
+```bash
+npm run deploy                          # 빌드해서 웹 주소를 새 것으로 바꾼다 (1~2분)
+git add -A && git commit -m "무엇을 고쳤는지" && git push    # 코드도 올린다
+```
+
+둘은 따로다 — `deploy` 는 **보이는 화면**을, `push` 는 **코드**를 올린다.
+화면만 바꾸고 싶으면 `deploy` 만 하면 된다.
+
+**저장소 이름을 바꾸면 세 군데를 같이 바꿔야 한다** — 페이지 주소 뒤에 저장소
+이름이 붙기 때문이다. `scripts/deploy-pages.mjs` 의 `BASE`, `package.json` 의
+`build:pages`, 그리고 이 문서. 안 바꾸면 맵·오프닝 그림·글꼴을 빈 데서 찾아
+**까만 화면**이 된다.
+
+전시장 키오스크는 오프라인이라 이 주소를 안 쓴다 — `npm run build` 한 `dist/`
+폴더를 아이패드에 직접 띄운다. 이 주소는 **보여주기용**이다.
 
 ---
 

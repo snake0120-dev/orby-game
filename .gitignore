@@ -25,3 +25,6 @@ dist-ssr
 
 # 비교 그림 — 작업용이라 커밋도 배포도 안 한다 (scripts/compare-zone.mjs)
 compare
+
+# 웹에 올릴 때 쓰는 작업칸 (scripts/deploy-pages.mjs 가 만들고 지운다)
+.deploy-tmp
