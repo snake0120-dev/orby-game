@@ -111,6 +111,10 @@ export default function App() {
   const phase = useGame((s) => s.phase);
   const opening = useGame((s) => s.opening);
   const openingRun = useGame((s) => s.openingRun);
+  /* 오프닝이 덮고 있는 동안은 **아무것도 그리지 않는다.** 덮개가 불투명해서
+     보이지도 않는 그림이고, 아이패드에서는 그 비용이 오프닝 영상을 버벅이게
+     했다. 구역을 올리는 일은 밑에서 그대로 돈다 (결정 ㊼). */
+  const sceneIdle = useGame((s) => s.sceneIdle);
   /* 가로 무대는 창을 거의 다 쓴다 — 여백이 좁아 패널이 무대 왼쪽을 덮는다.
      그동안 HUD 를 오른쪽으로 밀어 가려지지 않게 한다. */
   const panelOpen = useTune((s) => s.open);
@@ -127,6 +131,7 @@ export default function App() {
       <div className="stage">
         <Canvas
           shadows
+          frameloop={sceneIdle ? 'never' : 'always'}
           /* 레티나에서 dpr 2 는 칠할 픽셀이 네 배다. 아이패드 프로 11인치면
              4.0메가픽셀 → 1.5 로 묶어 2.2메가픽셀. 칠하는 양이 **44% 줄고**
              복셀 덩어리라 눈으로는 거의 티가 안 난다 — 2구역 전용 화면이

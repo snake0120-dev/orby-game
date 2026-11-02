@@ -85,6 +85,18 @@ interface GameState {
    */
   openingRun: number;
   endOpening: () => void;
+  /**
+   * **3D 무대를 쉬게 둔다** — 오프닝이 덮고 있는 동안만.
+   *
+   * 덮개는 불투명한데 그 밑에서 `Canvas` 는 그림자까지 켠 채 계속 그리고 있었다.
+   * 맥북은 티가 안 났지만 아이패드에서는 **아무도 안 보는 그림을 그리느라**
+   * 오프닝 영상이 버벅였다. 덮여 있는 동안에는 그리지 않는다 (결정 ㊼).
+   *
+   * 구역을 올리는 일(맵 받기·면 굽기)은 그대로 돈다 — 그건 그리는 일이 아니다.
+   */
+  sceneIdle: boolean;
+  /** 덮개가 걷히기 **직전에** 무대를 깨운다 — 걷히는 순간 첫 장을 그리면 한 번 걸린다 */
+  wakeScene: () => void;
   /** 프롭이 놓인 칸 (마인크래프트의 마커 위치) */
   propCell: (prop: PropDef) => Cell | null;
 }
@@ -177,6 +189,7 @@ export const useGame = create<GameState>((set, get) => ({
   phase: 'title',
   opening: !SKIP_OPENING,
   openingRun: 0,
+  sceneIdle: !SKIP_OPENING,
   stageIndex: 0,
   stage: STAGES[0],
   map: null,
@@ -367,7 +380,10 @@ export const useGame = create<GameState>((set, get) => ({
 
   /* 대사는 **걷히는 순간**에 띄운다. 2구역을 오프닝 뒤에서 미리 올려 두기 때문에,
      그때 들어온 `intro` 는 아이가 화면을 보기도 전에 이미 사라져 있다. */
-  endOpening: () => set((s) => ({ opening: false, message: s.stage.intro ?? null })),
+  endOpening: () =>
+    set((s) => ({ opening: false, sceneIdle: false, message: s.stage.intro ?? null })),
+
+  wakeScene: () => set({ sceneIdle: false }),
 
   /**
    * **처음(인트로)으로 되돌린다** — `h` 키와 완주 화면의 "처음으로".
@@ -378,7 +394,8 @@ export const useGame = create<GameState>((set, get) => ({
    */
   reset: () =>
     set((s) => ({
-      phase: 'title', opening: !NEVER_OPENING, openingRun: s.openingRun + 1,
+      phase: 'title', opening: !NEVER_OPENING, sceneIdle: !NEVER_OPENING,
+      openingRun: s.openingRun + 1,
       map: null, done: [], path: [], moved: false, message: null,
     })),
 }));

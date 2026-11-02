@@ -11,6 +11,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "verify": "node scripts/verify.mjs",
+    "opening:mp4": "node scripts/make-opening-mp4.mjs",
     "map:import": "node scripts/import-mcworld.mjs",
     "map:test": "node scripts/make-test-map.mjs",
     "test": "node scripts/lib/nbt-le.test.mjs",
