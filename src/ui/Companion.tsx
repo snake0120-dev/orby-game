@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useGame } from '../game/store';
-import { OrbyStar } from './OrbyStar';
 
 /** 말풍선이 떠 있는 시간 */
 const DWELL_MS = 4200;
@@ -14,15 +13,36 @@ const DWELL_MS = 4200;
  * 대사는 스토어가 단일 출처다. 여기서 로컬 state로 복제하지 않고,
  * 시간이 지나면 스토어를 비우는 타이머만 건다. (나중에 보이스오버를 붙일 때도 같은 자리다.)
  *
- * ― 모양은 `ui 가이드/Frame 276~279.png` 에서 잰 값이다 ―────────
- *   · 상자   67u × 14u, 왼쪽 6.8u · 아래 4.7u(`--ui-floor`)
- *   · 테두리 1.2u(`--ui-line`) 짜리 주황 한 겹, **모서리는 각진다**
- *   · 바탕   #d9d9d9, 글자 검정
- *   · 별 ✦  상자의 **왼쪽 위 모서리**에 중심을 두고 화면 밖으로 잘려 나간다
+ * ― 틀 모양은 **보통 테두리가 아니다** ―─────────────────────
+ * `ui 가이드/배경 없음 ui.png` 를 픽셀로 떠 보니 이렇게 생겼다:
  *
- * 아래 4.7u 는 미니맵과 **같은 밑줄**이다. 가이드에서 둘의 아랫변이 정확히
- * 한 줄에 놓여 있어서 한 값(`--ui-floor`)으로 묶어 뒀다 — 한쪽만 옮기면 어긋난다.
+ * ```
+ *        x111                      x1228 x1248
+ *  y1456  ┌──────── 위 띠 ─────────┐          ← 주황 20px
+ *  y1476  ├───────────────────────┼─────┐
+ *         │   몸통 #d9d9d9         │ 오른 │    ← 오른 띠는 **몸통 높이만큼만**
+ *  y1676  ├───────────────────────┼─────┘
+ *  y1696  └──────── 아래 띠 ───────┘
+ * ```
+ *
+ * **왼쪽 테두리가 없다. 오른쪽 위·아래 모서리도 비어 있다.** 네 변을 두른
+ * 보통 테두리(`border`)로는 안 나온다 — 모서리가 채워져 버린다. 그래서 위·아래
+ * 띠는 몸통에 붙이고, 오른쪽 띠만 따로 띄워 몸통 높이에 맞춘다.
+ *
+ * ― 가이드에서 잰 값 ―────────────────────────────────────────
+ *   바깥 67.5u × 14.2u · 몸통 66.3u × 11.9u · 띠 1.19u(`--ui-line`)
+ *   왼쪽 6.58u · 아래 4.69u(`--ui-floor` — 미니맵과 **같은 밑줄**)
+ *   글씨 Mona 2.61u (가이드 44px) · 검정 · 가운데
+ *
+ * ✦ 별은 `public/ui/star.png` 다 — 가이드에서 그대로 오려낸 그림이라 모양이
+ * 똑같다. SVG 로 다시 그렸더니 팔 두께(세로 1u · 가로 2u)와 끝으로 갈수록
+ * 옅어지는 그라데이션이 안 맞았다. **위 띠 기준으로 붙인다** — 가로팔이 그 띠를
+ * 가로지르는 게 이 그림의 핵심이라, 글이 길어져 상자가 커져도 그 자리는 지켜야 한다.
  */
+
+/** 오려낸 별 그림의 크기(332×496px)와 말풍선 왼쪽 위 모서리 기준 자리 */
+const STAR = { w: 19.69, h: 29.42, left: -6.58, top: -14.23 };
+
 export function Companion() {
   const message = useGame((s) => s.message);
   const say = useGame((s) => s.say);
@@ -44,9 +64,9 @@ export function Companion() {
     <div
       style={{
         position: 'absolute',
-        left: 'calc(var(--u) * 6.8 + var(--ui-shift))',
+        left: 'calc(var(--u) * 6.58 + var(--ui-shift))',
         bottom: 'var(--ui-floor)',
-        width: 'calc(var(--u) * 67)',
+        width: 'calc(var(--u) * 67.49)',
         /* 말풍선이 없을 때도 **자리는 그대로 둔다** — 투명도만 바꾼다.
            붙였다 떼면 별까지 같이 사라졌다 나타나서 왼쪽 아래가 한 번 번쩍인다. */
         opacity: message ? 1 : 0,
@@ -54,23 +74,30 @@ export function Companion() {
         transition: 'opacity 280ms ease, transform 280ms ease',
       }}
     >
+      {/* 위 띠 — 오른쪽 띠 자리를 비워 둔다 (모서리가 비어 있어야 한다) */}
       <div
         style={{
-          minHeight: 'calc(var(--u) * 14)',
+          height: 'var(--ui-line)',
+          marginRight: 'var(--ui-line)',
+          background: 'var(--ui-orange)',
+        }}
+      />
+      <div
+        style={{
+          /* **키를 고정한다.** 글이 길어 두 줄이 되면 상자가 커지고, 그러면
+             별이 위로 밀려 가로팔이 위 띠를 못 가로지른다 — 가이드 그림이
+             깨진다. 두 줄(7.1u)은 이 키(11.9u) 안에 넉넉히 들어간다. */
+          height: 'calc(var(--u) * 11.86)',
+          marginRight: 'var(--ui-line)',
           display: 'grid',
           placeItems: 'center',
-          padding: 'calc(var(--u) * 1.6) calc(var(--u) * 3.2)',
+          padding: '0 calc(var(--u) * 2)',
           background: 'var(--ui-bubble)',
-          border: 'var(--ui-line) solid var(--ui-orange)',
-          /* 각진 모서리가 이 UI 의 성격이다. 둥글리면 지금까지의 알약 모양으로
-             돌아간다 — 로고타입이 픽셀 글자라 모서리가 각져야 한 벌로 읽힌다. */
-          borderRadius: 0,
-          /* 가이드 글씨는 Pretendard 보다 훨씬 좁다. 그 글씨체가 들어오면 이
-             숫자를 4.3u 로 올린다 (가이드에서 잰 값). 지금은 Pretendard 폭으로
-             한 줄에 들어가는 크기다. */
-          fontSize: 'calc(var(--u) * 2.6)',
-          fontWeight: 800,
-          lineHeight: 1.3,
+          /* 가이드 글씨 그대로. 다른 UI(시작 화면·통과 화면)는 Pretendard 를
+             쓴다 — 가이드가 말풍선만 이 글씨체로 그려져 있다. */
+          fontFamily: "'Mona', 'Pretendard', sans-serif",
+          fontSize: 'calc(var(--u) * 2.61)',
+          lineHeight: 1.35,
           textAlign: 'center',
           color: 'var(--ui-bubble-ink)',
           wordBreak: 'keep-all',
@@ -78,7 +105,38 @@ export function Companion() {
       >
         {message ?? ''}
       </div>
-      <OrbyStar />
+      {/* 아래 띠 */}
+      <div
+        style={{
+          height: 'var(--ui-line)',
+          marginRight: 'var(--ui-line)',
+          background: 'var(--ui-orange)',
+        }}
+      />
+      {/* 오른쪽 띠 — 위·아래 띠 사이, 몸통 높이만큼만 */}
+      <div
+        style={{
+          position: 'absolute',
+          right: 0,
+          top: 'var(--ui-line)',
+          bottom: 'var(--ui-line)',
+          width: 'var(--ui-line)',
+          background: 'var(--ui-orange)',
+        }}
+      />
+      <img
+        src={`${import.meta.env.BASE_URL}ui/star.png`}
+        alt=""
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: `calc(var(--u) * ${STAR.left})`,
+          top: `calc(var(--u) * ${STAR.top})`,
+          width: `calc(var(--u) * ${STAR.w})`,
+          height: `calc(var(--u) * ${STAR.h})`,
+          pointerEvents: 'none',
+        }}
+      />
     </div>
   );
 }
