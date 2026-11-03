@@ -1,8 +1,13 @@
 import { useEffect } from 'react';
 import { useGame } from '../game/store';
 
-/** 말풍선이 떠 있는 시간 */
-const DWELL_MS = 4200;
+/**
+ * 말풍선이 떠 있는 시간.
+ *
+ * 4200 으로 뒀다가 **1.3배 늘렸다** — 아이가 다 읽기 전에 사라졌다. 이제
+ * 화면에 안내가 이것 하나뿐이라(결정 ㊾) 놓치면 볼 데가 없다.
+ */
+const DWELL_MS = 5460;
 
 /**
  * ORBY 동반자의 말풍선 — **화면 왼쪽 아래.**
@@ -64,13 +69,13 @@ export function Companion() {
     <div
       style={{
         position: 'absolute',
-        left: 'calc(var(--u) * 6.58 + var(--ui-shift))',
+        left: 'calc(var(--ui-u) * 6.58 + var(--ui-shift))',
         bottom: 'var(--ui-floor)',
-        width: 'calc(var(--u) * 67.49)',
+        width: 'calc(var(--ui-u) * 67.49)',
         /* 말풍선이 없을 때도 **자리는 그대로 둔다** — 투명도만 바꾼다.
            붙였다 떼면 별까지 같이 사라졌다 나타나서 왼쪽 아래가 한 번 번쩍인다. */
         opacity: message ? 1 : 0,
-        transform: message ? 'translateY(0)' : 'translateY(calc(var(--u) * 0.8))',
+        transform: message ? 'translateY(0)' : 'translateY(calc(var(--ui-u) * 0.8))',
         transition: 'opacity 280ms ease, transform 280ms ease',
       }}
     >
@@ -87,16 +92,16 @@ export function Companion() {
           /* **키를 고정한다.** 글이 길어 두 줄이 되면 상자가 커지고, 그러면
              별이 위로 밀려 가로팔이 위 띠를 못 가로지른다 — 가이드 그림이
              깨진다. 두 줄(7.1u)은 이 키(11.9u) 안에 넉넉히 들어간다. */
-          height: 'calc(var(--u) * 11.86)',
+          height: 'calc(var(--ui-u) * 11.86)',
           marginRight: 'var(--ui-line)',
           display: 'grid',
           placeItems: 'center',
-          padding: '0 calc(var(--u) * 2)',
+          padding: '0 calc(var(--ui-u) * 2)',
           background: 'var(--ui-bubble)',
           /* 가이드 글씨 그대로. 다른 UI(시작 화면·통과 화면)는 Pretendard 를
              쓴다 — 가이드가 말풍선만 이 글씨체로 그려져 있다. */
           fontFamily: "'Mona', 'Pretendard', sans-serif",
-          fontSize: 'calc(var(--u) * 2.61)',
+          fontSize: 'calc(var(--ui-u) * 2.61)',
           lineHeight: 1.35,
           textAlign: 'center',
           color: 'var(--ui-bubble-ink)',
@@ -130,10 +135,10 @@ export function Companion() {
         aria-hidden
         style={{
           position: 'absolute',
-          left: `calc(var(--u) * ${STAR.left})`,
-          top: `calc(var(--u) * ${STAR.top})`,
-          width: `calc(var(--u) * ${STAR.w})`,
-          height: `calc(var(--u) * ${STAR.h})`,
+          left: `calc(var(--ui-u) * ${STAR.left})`,
+          top: `calc(var(--ui-u) * ${STAR.top})`,
+          width: `calc(var(--ui-u) * ${STAR.w})`,
+          height: `calc(var(--ui-u) * ${STAR.h})`,
           pointerEvents: 'none',
         }}
       />

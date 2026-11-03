@@ -92,10 +92,10 @@ export function MiniMap() {
     <div
       style={{
         position: 'absolute',
-        right: 'calc(var(--u) * 4.86)',
+        right: 'calc(var(--ui-u) * 4.86)',
         bottom: 'var(--ui-floor)',
-        width: 'calc(var(--u) * 26.1)',
-        height: 'calc(var(--u) * 26.1)',
+        width: 'calc(var(--ui-u) * 26.1)',
+        height: 'calc(var(--ui-u) * 26.1)',
       }}
     >
       {/* 네 변. 가로 띠는 좌우를, 세로 띠는 위아래를 비워 **모서리를 남긴다.** */}
@@ -149,12 +149,12 @@ export function MiniMap() {
               ref={marker}
               style={{
                 position: 'absolute',
-                width: 'calc(var(--u) * 1.6)',
-                height: 'calc(var(--u) * 1.6)',
+                width: 'calc(var(--ui-u) * 1.6)',
+                height: 'calc(var(--ui-u) * 1.6)',
                 borderRadius: '50%',
                 background: 'var(--ui-orange)',
-                border: 'calc(var(--u) * 0.35) solid #ffffff',
-                boxShadow: '0 0 0 calc(var(--u) * 0.2) #00000066',
+                border: 'calc(var(--ui-u) * 0.35) solid #ffffff',
+                boxShadow: '0 0 0 calc(var(--ui-u) * 0.2) #00000066',
                 transform: `translate(-50%, -50%) rotate(${-ISO_SPIN}deg) scale(${1 / fit})`,
               }}
             />

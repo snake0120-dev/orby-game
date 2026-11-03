@@ -18,9 +18,9 @@ export function Logo() {
       alt="ORBY"
       style={{
         position: 'absolute',
-        left: 'calc(var(--u) * 2 + var(--ui-shift))',
-        top: 'calc(var(--u) * 2)',
-        width: 'calc(var(--u) * 18)',
+        left: 'calc(var(--ui-u) * 2 + var(--ui-shift))',
+        top: 'calc(var(--ui-u) * 2)',
+        width: 'calc(var(--ui-u) * 18)',
         height: 'auto',
         imageRendering: 'pixelated',
       }}
