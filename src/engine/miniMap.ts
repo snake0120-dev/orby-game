@@ -8,10 +8,25 @@ import type { VoxelMap } from './voxelMap';
  * 그림이면 맵을 고칠 때마다 같이 고쳐야 하고, 한 번 잊으면 거짓말을 하게 된다.
  *
  * ― **천장을 걷어내고 위에서 본 평면도다** ―──────────────────
- *   관문    주황    여기로 가면 다음 구역이다
- *   바닥    흰색    아이가 실제로 걸을 수 있는 칸
- *   벽      민트    못 걷는 데 서 있는 것 — 벽·기둥·가구
- *   빈칸    투명    바탕색이 비친다
+ *   관문      주황    여기로 가면 다음 구역이다
+ *   안내 길   호박    바닥에 깔린 **발광석** — 따라가면 되는 길
+ *   바닥      흰색    아이가 걸을 수 있는 나머지 칸
+ *   벽        민트    못 걷는 데 서 있는 것 — 벽·기둥·가구
+ *   빈칸      투명    바탕색이 비친다
+ *
+ * **빛길은 맵에 이미 깔려 있다.** 3D 화면에서는 발밑이 빛나서 어디로 가야
+ * 하는지 알려주는데, 미니맵에 없으면 미니맵만 보고는 길을 못 찾는다.
+ *
+ * 따로 그려 넣지 않고 **스테이지의 `pathGlow` 블록**(2·3구역 모두
+ * `minecraft:ochre_froglight`)이 발밑에 깔렸는지만 본다 — 3D 쪽 빛길과
+ * **같은 한 값**을 보므로, 천우태가 맵에 더 깔면 미니맵에도 그대로 따라 나온다.
+ *
+ * **빛길은 밟는 블록이 아니라 그 아래 묻혀 있다.** 2구역을 세어 보니 걷는
+ * 양탄자 마커에서 정확히 **두 칸 아래**였다 (935칸 전부). 그래서 발밑 한 칸만
+ * 보면 하나도 안 잡힌다 — 두 칸까지 내려본다.
+ *
+ * `emissive` 로 가르면 안 된다 — 사인·난간에 박힌 글로스톤까지 길로 잡힌다
+ * (`BlockLights` 가 같은 이유로 그걸 가려낸다).
  *
  * 처음엔 "위에서 보면 뭐가 보이나"로 그렸다 — 심사장 **지붕**이 민트 덩어리로
  * 덮여서 그 안이 어떻게 생겼는지 전혀 안 보였다. 미니맵은 풍경이 아니라
@@ -31,14 +46,22 @@ import type { VoxelMap } from './voxelMap';
 
 /** 미니맵 색 — `index.css` 의 `--ui-*` 와 같은 값이어야 한다 */
 const 관문 = [243, 151, 0, 255];
+/* 발광석 길. 관문 주황보다 밝은 호박색이라 **흰 바닥 위에서도 읽히고**
+   관문과도 구별된다 — 둘 다 주황이면 "여기가 끝인가" 싶어진다. */
+const 안내길 = [246, 195, 67, 255];
 const 바닥 = [255, 255, 255, 255];
 const 벽 = [0, 191, 181, 255];
 
 /** 바닥보다 몇 칸 위까지를 "벽"으로 볼 것인가. 그 위는 천장이다. */
 const 벽높이 = 3;
 
-export function miniMapImage(map: VoxelMap): ImageData {
+/** 빛길을 찾아 내려가는 깊이. 재 보니 걷는 높이에서 두 칸 아래에 묻혀 있다. */
+const 빛길깊이 = 2;
+
+export function miniMapImage(map: VoxelMap, pathGlow?: string): ImageData {
   const { w, d, h, cells, colors, translucent, walkY, gate } = map;
+  /** 빛길 블록의 팔레트 자리. 맵마다 번호가 달라서 이름으로 찾는다. */
+  const 빛길 = pathGlow ? map.palette.indexOf(pathGlow) : -1;
   const img = new ImageData(w, d);
   const out = img.data;
 
@@ -53,9 +76,19 @@ export function miniMapImage(map: VoxelMap): ImageData {
       const flat = z * w + x;
 
       let c: number[] | null = null;
+      const foot = walkY[flat];
       if (gate[flat]) c = 관문;
-      else if (walkY[flat] >= 0) c = 바닥;
-      else {
+      else if (foot >= 0) {
+        /* 밟는 블록(`walkY - 1`)부터 그 아래까지 내려보며 빛길을 찾는다. */
+        c = 바닥;
+        if (빛길 >= 0) {
+          for (let k = 1; k <= 빛길깊이; k++) {
+            const y = foot - k;
+            if (y < 0) break;
+            if (cells[x * h * d + y * d + z] === 빛길) { c = 안내길; break; }
+          }
+        }
+      } else {
         /* 못 걷는 칸. **천장 아래에** 속이 찬 블록이 하나라도 있으면 벽이다.
            `colors` 가 null 인 칸은 마커·공기라 세지 않고(`voxelMap`),
            유리는 길을 막아 보이게 하므로 안 친다. */

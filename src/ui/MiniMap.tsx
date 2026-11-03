@@ -46,6 +46,7 @@ const BAR_IN = 'var(--ui-line)';
 
 export function MiniMap() {
   const map = useGame((s) => s.map);
+  const pathGlow = useGame((s) => s.stage.pathGlow);
   const [px, pz] = useGame((s) => s.playerCell);
   const fpv = useTune((s) => s.fpv);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -53,7 +54,7 @@ export function MiniMap() {
   const marker = useRef<HTMLDivElement>(null);
 
   /** 구역이 바뀔 때만 다시 그린다 */
-  const img = useMemo(() => (map ? miniMapImage(map) : null), [map]);
+  const img = useMemo(() => (map ? miniMapImage(map, pathGlow) : null), [map, pathGlow]);
 
   const a = map ? map.w / Math.max(map.w, map.d) : 1;
   const b = map ? map.d / Math.max(map.w, map.d) : 1;
