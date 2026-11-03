@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Scene } from './engine/Scene';
 import { Backdrop } from './engine/Backdrop';
-import { Hud } from './ui/Hud';
+import { Logo } from './ui/Logo';
+import { MiniMap } from './ui/MiniMap';
 import { Companion } from './ui/Companion';
 import { ErrorScreen, Finished, Loading, StageClear, Title } from './ui/Screens';
 import { Seam } from './ui/Seam';
@@ -150,10 +151,24 @@ export default function App() {
 
         <div
           className="overlay"
-          style={panelOpen ? { paddingLeft: 'calc(var(--u) * 27.5)' } : undefined}
+          style={
+            panelOpen
+              ? ({ '--ui-shift': 'calc(var(--u) * 27.5)' } as React.CSSProperties)
+              : undefined
+          }
         >
-          {/* 이음매(`seam`)에서도 HUD 를 그대로 둔다 — 빠졌다 들어오면 막 가장자리에서 깜빡인다 */}
-          {phase === 'playing' || phase === 'seam' ? <Hud /> : <div />}
+          {/*
+            화면에 얹히는 건 **셋뿐이다** (`ui 가이드/Frame 276~279.png`):
+            왼위 로고 · 왼아래 말풍선 + ✦ · 오른아래 미니맵.
+
+            예전에 왼위에 있던 구역 이름과 미션 체크리스트는 **뺐다** — 가이드에
+            없다. 할 일 안내는 말풍선이 전부 맡는다.
+
+            이음매(`seam`)에서도 그대로 둔다 — 빠졌다 들어오면 막 가장자리에서
+            깜빡인다.
+          */}
+          <Logo />
+          {phase === 'playing' || phase === 'seam' ? <MiniMap /> : null}
           {/* 말풍선은 항상 화면 아래쪽. 씬 한가운데를 가리면 안 된다. */}
           <Companion />
         </div>
